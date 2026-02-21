@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
 public static class chat
@@ -24,7 +25,7 @@ public static class chat
 		return Results.Ok(messages);
 	}
 
-	public static async Task<IResult> SendInChat(string id, SendChatRequest request, MainDbContext db)
+	public static async Task<IResult> SendInChat(string id, ClaimsPrincipal user, SendChatRequest request, MainDbContext db)
 	{
 		var table = await db.Tables
 			.Include(t => t.Players) 
@@ -33,7 +34,10 @@ public static class chat
 		if (table == null)
 			return Results.NotFound("Table not found");
 
-		Player? player = table.Players.FirstOrDefault(p => p.Id == request.PlayerId);
+		if (!user.GetPlayerId(out string playerId))
+			return Results.NotFound("Player not found");
+		
+		Player? player = table.Players.FirstOrDefault(p => p.Id == playerId);
 		if (player == null)
 			return Results.BadRequest("You must join the table first");
 

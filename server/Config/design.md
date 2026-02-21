@@ -27,6 +27,10 @@ problems:
 1) we can withdraw and spin right away? 
 
 todo:
-1) revalidate the whole loop and design, ensuring it is robust and works
-2) complete xunits
-3) test by hand
+* xunits
+* signalR
+* blazor client
+* billing microservice
+
+* test by hand
+* add ratelimiting

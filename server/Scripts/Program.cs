@@ -1,18 +1,11 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-if (builder.Configuration.GetValue<bool>("UseInMemoryDatabase"))
-{
-	builder.Services.AddDbContext<MainDbContext>(options =>
-		options.UseSqlite("DataSource=file::memory:?cache=shared"));
-}
-else
-{
-	builder.Services.AddDbContext<MainDbContext>(options =>
-		options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
-		                  ?? "Host=localhost;Database=maliburesort_server_db;Username=postgres;Password=pass123"));
-}
+ConnectDb();
 
 builder.Services.AddHostedService<SpinService>();
 
@@ -22,15 +15,11 @@ if (builder.Environment.IsDevelopment())
 	builder.Services.AddSwaggerGen();
 }
 
+InitAuth();
+
 WebApplication app = builder.Build();
 
-using (IServiceScope scope = app.Services.CreateScope())
-{
-	MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
-	db.Database.Migrate();
-
-	await tables.SeedTables(db);
-}
+await InitDb();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -38,38 +27,56 @@ if (builder.Environment.IsDevelopment())
 	app.UseSwaggerUI();
 }
 
-app.MapGet("/", () => "Welcome to the Malibu Resort.\n" +
-                      "Where the sun laughs and monkeys walk in gold.");
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapPost("/auth/register", auth.Register);
-app.MapPost("/auth/login", auth.Login);
-app.MapPost("/auth/logout", auth.Logout);
-
-app.MapPost("/players/{id}/deposit", wallet.Deposit);
-app.MapPost("/players/{id}/withdraw", wallet.Withdraw);
-app.MapGet("/players/{id}/balance", wallet.Balance);
-
-app.MapGet("/tables", tables.ListTables);
-app.MapPost("/tables/{id}/join", tables.JoinTable);
-app.MapPost("/tables/{id}/leave", tables.LeaveTable);
-
-app.MapPost("/tables/{id}/bet", tables.PlaceBet);
-
-app.MapGet("/tables/{id}/chat", chat.GetChat);
-app.MapPost("/tables/{id}/chat", chat.SendInChat);
-app.MapGet("/tables/{id}/leaderboard", ldb.GetLeaderboard);
+routes.MapRouters(app);
 
 app.Run();
 
+void ConnectDb()
+{
+	if (builder.Configuration.GetValue<bool>("UseInMemoryDatabase"))
+	{
+		builder.Services.AddDbContext<MainDbContext>(options =>
+			options.UseSqlite("DataSource=file::memory:?cache=shared"));
+	}
+	else
+	{
+		builder.Services.AddDbContext<MainDbContext>(options =>
+			options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
+			                  ?? "Host=localhost;Database=maliburesort_server_db;Username=postgres;Password=pass123"));
+	}
+}
 
-public record PlayerCredentials(string Name, string Pass);
+void InitAuth()
+{
+	string? jwtkey = builder.Configuration["Jwt:Key"];
+	if (jwtkey is null)
+		throw new Exception("Jwt Key is not specified in your system env vars");
 
-public record WalletTransaction(decimal Amount);
+	byte[] key = Encoding.ASCII.GetBytes(jwtkey);
+	builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+		.AddJwtBearer(options =>
+		{
+			options.TokenValidationParameters = new TokenValidationParameters
+			{
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = new SymmetricSecurityKey(key),
+				ValidateIssuer = false,
+				ValidateAudience = false
+			};
+		});
+	builder.Services.AddAuthorization();
+}
 
-public record JoinTableRequest(string PlayerId);
+async Task InitDb()
+{
+	using (IServiceScope scope = app.Services.CreateScope())
+	{
+		MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
+		db.Database.Migrate();
 
-public record LeaveTableRequest(string PlayerId);
-
-public record PlaceBetRequest(string PlayerId, int ChosenNumber, decimal Amount);
-
-public record SendChatRequest(string PlayerId, string Message);
+		await tables.SeedTables(db);
+	}
+}

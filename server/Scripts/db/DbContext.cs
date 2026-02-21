@@ -30,8 +30,14 @@ public class Player
 	public string Id { get; set; } = null!;
 	public string Name { get; set; } = null!;
 	public string NameNormalized { get; set; } = null!;
+
 	public string PasswordHash { get; set; } = null!;
+	public string JWTVersion { get; set; } = null!;
+	public string? RefreshToken { get; set; }
+	public DateTime RefreshTokenExpiry { get; set; }
+
 	public decimal Balance { get; set; }
+
 	public List<Bet> Bets { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 }

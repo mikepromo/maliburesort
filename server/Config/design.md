@@ -8,9 +8,6 @@
 2) terminal input
 3) playa name / balance / table_id
 
-problems:
-1) we can withdraw and spin right away? 
-
 todo:
 * signalR
 * blazor client

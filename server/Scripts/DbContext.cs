@@ -1,6 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
+public enum DbSaveResult
+{
+	Success,
+	ConcurrencyConflict,
+	DbError,
+	Fatal
+}
+
 public class MainDbContext : DbContext
 {
 	public MainDbContext(DbContextOptions<MainDbContext> options) : base(options) { }
@@ -28,24 +36,38 @@ public class MainDbContext : DbContext
 	public DbSet<Bet> Bets => Set<Bet>();
 	public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
-	public async Task<IResult?> TrySave()
+	public async Task<IResult?> TrySaveAsync_HTTP()
+	{
+		DbSaveResult saveResult = await TrySaveAsync();
+		if (saveResult is DbSaveResult.Success) return null;
+		return saveResult switch
+		{
+			DbSaveResult.Success             => Results.Ok(),
+			DbSaveResult.ConcurrencyConflict => Results.Conflict("Please try again."),
+			DbSaveResult.DbError             => Results.UnprocessableEntity("Database constraint violation"),
+			DbSaveResult.Fatal               => Results.InternalServerError(),
+			_                                => throw new ArgumentOutOfRangeException()
+		};
+	}
+
+	public async Task<DbSaveResult> TrySaveAsync()
 	{
 		try
 		{
 			await SaveChangesAsync();
-			return null;
+			return DbSaveResult.Success;
 		}
 		catch (DbUpdateConcurrencyException)
 		{
-			return Results.Conflict("Please try again.");
+			return DbSaveResult.ConcurrencyConflict;
 		}
 		catch (DbUpdateException)
 		{
-			return Results.UnprocessableEntity("Database constraint violation");
+			return DbSaveResult.DbError;
 		}
-		catch (Exception)
+		catch
 		{
-			return Results.InternalServerError();
+			return DbSaveResult.Fatal;
 		}
 	}
 
@@ -65,8 +87,8 @@ public class MainDbContext : DbContext
 			];
 			Tables.AddRange(tables);
 
-			IResult? error = await TrySave();
-			if (error is not null) throw new Exception();
+			if (await TrySaveAsync() is not DbSaveResult.Success)
+				throw new Exception();
 		}
 	}
 

@@ -4,24 +4,27 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 {
 	public async Task DoSpinsAsync()
 	{
-		using IServiceScope scope = scopeFactory.CreateScope();
-		MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
-		DateTime now = DateTime.UtcNow;
-		List<Table> tables = await db.Tables.Where(t => t.NextSpinTime <= now).ToListAsync();
-
-		foreach (Table table in tables)
+		List<Table> tablesDue;
+		using (IServiceScope scope = scopeFactory.CreateScope())
 		{
+			tablesDue = await scope.ServiceProvider.GetRequiredService<MainDbContext>()
+				.Tables.Where(t => t.NextSpinTime <= DateTime.UtcNow).ToListAsync();
+		}
+
+		foreach (Table table in tablesDue)
+		{
+			using IServiceScope scope = scopeFactory.CreateScope();
+			MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
+
 			int winningNumber = Random.Shared.Next(0, 37);
-			await ProcessSpin(table, db, winningNumber);
-			
-			IResult? error = await db.TrySave();
-			if (error is not null) throw new Exception();
+			await ProcessSpin(table.Id, db, winningNumber);
 		}
 	}
 
-	public async Task ProcessSpin(Table table, MainDbContext db, int winningNumber)
+	public async Task ProcessSpin(string tableId, MainDbContext db, int winningNumber)
 	{
-		table.NextSpinTime = DateTime.UtcNow.AddSeconds(table.SpinInterval_sec());
+		Table? table = await db.Tables.FindAsync(tableId);
+		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.SpinInterval_sec());
 
 		List<Bet> bets = await db.Bets
 			.Include(b => b.Player)
@@ -42,6 +45,9 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 
 			bet.Player.Balance += payout;
 		}
+
+		if (await db.TrySaveAsync() is not DbSaveResult.Success)
+			throw new Exception();
 	}
 }
 

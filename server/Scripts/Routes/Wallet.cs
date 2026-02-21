@@ -36,7 +36,7 @@ public static class Wallet
 
 		player.Balance += amount;
 	
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Deposit successful", Id = playerId, NewBalance = player.Balance });
@@ -59,7 +59,7 @@ public static class Wallet
 
 		player.Balance -= amount;
 
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Withdrawal successful", PlayerId = player.Id, NewBalance = player.Balance });

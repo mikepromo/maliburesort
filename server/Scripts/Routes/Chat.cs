@@ -53,7 +53,7 @@ public static class Chat
 
 		db.ChatMessages.Add(msg);
 		
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Ok(new { msg.Id, msg.SentAt });

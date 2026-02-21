@@ -52,7 +52,7 @@ public static partial class Tables
 
 		table.Players.Add(player);
 
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Joined table", TableId = id, PlayerId = player.Id });
@@ -76,7 +76,7 @@ public static partial class Tables
 
 		table.Players.Remove(player);
 
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Left table", TableId = id, PlayerId = player.Id });
@@ -132,7 +132,7 @@ public static partial class Tables
 
 		db.Bets.Add(bet);
 		
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Ok(new

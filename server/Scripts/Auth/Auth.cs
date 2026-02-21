@@ -32,7 +32,7 @@ public static partial class Auth
 
 		await db.Players.AddAsync(player);
 
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		return Results.Created($"/player/{player.Id}", new { player.Id });
@@ -61,7 +61,7 @@ public static partial class Auth
 		player.RefreshToken = refreshToken;
 		player.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 	
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		//; send refresh token back to client
@@ -116,7 +116,7 @@ public static partial class Auth
 		player.JWTVersion = Guid.NewGuid().ToString();
 		player.RefreshToken = null;
 	
-		IResult? error = await db.TrySave();
+		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		context.Response.Cookies.Delete("refreshToken");

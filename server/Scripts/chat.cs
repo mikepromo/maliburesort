@@ -26,7 +26,9 @@ public static class chat
 
 	public static async Task<IResult> SendInChat(string id, SendChatRequest request, MainDbContext db)
 	{
-		Table? table = await db.Tables.FindAsync(id);
+		var table = await db.Tables
+			.Include(t => t.Players) 
+			.FirstOrDefaultAsync(t => t.Id == id);
 		
 		if (table == null)
 			return Results.NotFound("Table not found");
@@ -35,17 +37,18 @@ public static class chat
 		if (player == null)
 			return Results.BadRequest("You must join the table first");
 
-		ChatMessage chat = new()
+		ChatMessage msg = new()
 		{
+			Id = Guid.NewGuid().ToString(),
 			TableId = id,
 			PlayerId = player.Id,
 			Message = request.Message,
 			SentAt = DateTime.UtcNow
 		};
 
-		db.ChatMessages.Add(chat);
+		db.ChatMessages.Add(msg);
 		await db.SaveChangesAsync();
 
-		return Results.Ok(new { chat.Id, chat.SentAt });
+		return Results.Ok(new { msg.Id, msg.SentAt });
 	}
 }

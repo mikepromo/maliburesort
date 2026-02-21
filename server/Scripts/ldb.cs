@@ -6,20 +6,18 @@ public static class ldb
 	{
 		DateTime oneHourAgo = DateTime.UtcNow.AddHours(-1);
 
-		List<Bet> bets = await db.Bets
+		var leaderboard = await db.Bets
+			.Include(b => b.Player)
 			.Where(b => b.TableId == id && b.IsResolved && b.ResolvedAt >= oneHourAgo)
-			.ToListAsync();
-
-		var leaderboard = bets
-			.GroupBy(b => b.PlayerId)
+			.GroupBy(b => new { b.PlayerId, b.Player.Name })
 			.Select(g => new
 			{
-				PlayerId = g.Key,
-				PlayerName = db.Players.Find(g.Key)?.Name,
+				PlayerId = g.Key.PlayerId,
+				PlayerName = g.Key.Name,
 				NetProfit = g.Sum(b => b.Payout - b.Amount)
 			})
 			.OrderByDescending(x => x.NetProfit)
-			.ToList();
+			.ToListAsync();
 
 		return Results.Ok(leaderboard);
 	}

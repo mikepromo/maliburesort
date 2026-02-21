@@ -17,16 +17,15 @@ public class SpinService(IServiceScopeFactory scopeFactory) : BackgroundService
 		MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 		DateTime now = DateTime.UtcNow;
 
-		List<Table> tables = await db.Tables
+		List<Table> toSpinTables = await db.Tables
 			.Where(t => t.NextSpinTime <= now)
 			.ToListAsync();
 
-		foreach (Table table in tables)
+		foreach (Table table in toSpinTables)
 		{
 			await ProcessTableSpin(table, db);
+			await db.SaveChangesAsync();
 		}
-
-		await db.SaveChangesAsync();
 	}
 
 	async Task ProcessTableSpin(Table table, MainDbContext db)

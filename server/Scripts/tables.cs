@@ -4,7 +4,7 @@ public static partial class tables
 {
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
-		var tables = await db.Tables
+		var tables = (await db.Tables.Include(t => t.Players).ToListAsync())
 			.Select(t => new
 			{
 				t.Id,
@@ -14,8 +14,8 @@ public static partial class tables
 				MaxSeats = t.MaxSeats(),
 				PlayerCount = t.Players.Count,
 				t.NextSpinTime
-			})
-			.ToListAsync();
+			}).ToList();
+
 		return Results.Ok(tables);
 	}
 
@@ -24,7 +24,7 @@ public static partial class tables
 		Table? table = await db.Tables
 			.Include(t => t.Players)
 			.FirstOrDefaultAsync(t => t.Id == id);
-		
+
 		if (table == null)
 			return Results.NotFound("Table not found");
 
@@ -49,7 +49,7 @@ public static partial class tables
 		Table? table = await db.Tables
 			.Include(t => t.Players)
 			.FirstOrDefaultAsync(t => t.Id == id);
-		
+
 		if (table == null)
 			return Results.NotFound("Table not found");
 
@@ -68,7 +68,7 @@ public static partial class tables
 		Table? table = await db.Tables
 			.Include(t => t.Players)
 			.FirstOrDefaultAsync(t => t.Id == id);
-		
+
 		if (table == null)
 			return Results.NotFound("Table not found");
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 public class MainDbContext : DbContext
 {
@@ -9,6 +10,13 @@ public class MainDbContext : DbContext
 		modelBuilder.Entity<Player>()
 			.HasIndex(p => p.NameNormalized)
 			.IsUnique();
+
+		foreach (IMutableProperty property in modelBuilder.Model.GetEntityTypes()
+			         .SelectMany(t => t.GetProperties())
+			         .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
+		{
+			property.SetColumnType("decimal(18,2)");
+		}
 	}
 
 	public DbSet<Player> Players => Set<Player>();

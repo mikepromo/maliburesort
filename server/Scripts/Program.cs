@@ -24,21 +24,18 @@ if (builder.Environment.IsDevelopment())
 
 WebApplication app = builder.Build();
 
-await tables.InitTables(app);
+using (IServiceScope scope = app.Services.CreateScope())
+{
+	MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
+	db.Database.Migrate();
+
+	await tables.SeedTables(db);
+}
 
 if (builder.Environment.IsDevelopment())
 {
 	app.UseSwagger();
 	app.UseSwaggerUI();
-}
-
-if (builder.Environment.IsDevelopment())
-{
-	using (IServiceScope scope = app.Services.CreateScope())
-	{
-		MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
-		db.Database.Migrate();
-	}
 }
 
 app.MapGet("/", () => "Welcome to the Malibu Resort.\n" +

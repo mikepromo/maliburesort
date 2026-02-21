@@ -21,10 +21,16 @@ public class Program
 			builder.Services.AddSwaggerGen();
 		}
 
-		InitRateLimiting();
+		if (!builder.Environment.IsDevelopment())
+		{
+			InitRateLimiting();
+		}
+
 		InitAuth();
 
 		WebApplication app = builder.Build();
+
+		InitExHandling();
 
 		await InitDb();
 
@@ -37,7 +43,10 @@ public class Program
 		app.UseAuthentication();
 		app.UseAuthorization();
 
-		app.UseRateLimiter();
+		if (!builder.Environment.IsDevelopment())
+		{
+			app.UseRateLimiter();
+		}
 
 		Routes.MapRouters(app);
 
@@ -45,18 +54,12 @@ public class Program
 
 		void ConnectDb()
 		{
-			if (builder.Configuration.GetValue<bool>("UseInMemoryDatabase"))
+			builder.Services.AddDbContext<MainDbContext>(options =>
 			{
-				builder.Services.AddDbContext<MainDbContext>(options =>
-					options.UseSqlite("DataSource=file::memory:?cache=shared"));
-			}
-			else
-			{
-				builder.Services.AddDbContext<MainDbContext>(options =>
-					options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
-					                  ??
-					                  "Host=localhost;Database=maliburesort_server_db;Username=postgres;Password=pass123"));
-			}
+				options.UseNpgsql(
+					builder.Configuration.GetConnectionString("DefaultConnection") 
+					?? throw new Exception("Database Connection String is missing!"));
+			});
 		}
 
 		void InitRateLimiting()
@@ -103,6 +106,19 @@ public class Program
 			builder.Services.AddAuthorization();
 		}
 
+		void InitExHandling()
+		{
+			app.UseExceptionHandler(exceptionHandlerApp =>
+			{
+				exceptionHandlerApp.Run(async context =>
+				{
+					context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+					context.Response.ContentType = "application/json";
+					await context.Response.WriteAsJsonAsync(new { Message = "An unexpected error occurred" });
+				});
+			});
+		}
+
 		async Task InitDb()
 		{
 			using (IServiceScope scope = app.Services.CreateScope())
@@ -110,7 +126,7 @@ public class Program
 				MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 				await db.Database.MigrateAsync();
 
-				await Tables.SeedTables(db);
+				await db.SeedTables();
 			}
 		}
 	}

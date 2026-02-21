@@ -11,6 +11,10 @@ public class MainDbContext : DbContext
 			.HasIndex(p => p.NameNormalized)
 			.IsUnique();
 
+		modelBuilder.Entity<Player>()
+			.Property(p => p.Version)
+			.IsRowVersion();
+
 		foreach (IMutableProperty property in modelBuilder.Model.GetEntityTypes()
 			         .SelectMany(t => t.GetProperties())
 			         .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
@@ -23,6 +27,57 @@ public class MainDbContext : DbContext
 	public DbSet<Table> Tables => Set<Table>();
 	public DbSet<Bet> Bets => Set<Bet>();
 	public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
+	public async Task<IResult?> TrySave()
+	{
+		try
+		{
+			await SaveChangesAsync();
+			return null;
+		}
+		catch (DbUpdateConcurrencyException)
+		{
+			return Results.Conflict("Please try again.");
+		}
+		catch (DbUpdateException)
+		{
+			return Results.UnprocessableEntity("Database constraint violation");
+		}
+		catch (Exception)
+		{
+			return Results.InternalServerError();
+		}
+	}
+
+	public async Task SeedTables()
+	{
+		if (!Tables.Any())
+		{
+			List<Table> tables =
+			[
+				ArrangeTable("Silver Shells", TableTier.Tier1, 5),
+				ArrangeTable("Playful Breeze", TableTier.Tier1, 10),
+				ArrangeTable("Sunlight Lounge", TableTier.Tier2, 15),
+				ArrangeTable("Golden Sands", TableTier.Tier2, 20),
+				ArrangeTable("Secret Rendezvous", TableTier.Tier3, 25),
+				ArrangeTable("Dolphin's Breath", TableTier.Tier3, 30),
+				ArrangeTable("Eternal Bliss", TableTier.Tier4, 35)
+			];
+			Tables.AddRange(tables);
+
+			IResult? error = await TrySave();
+			if (error is not null) throw new Exception();
+		}
+	}
+
+	static Table ArrangeTable(string title, TableTier tier, int shift_sec)
+	{
+		return new Table
+		{
+			Id = Guid.NewGuid().ToString(), Name = title, Tier = tier,
+			NextSpinTime = DateTime.UtcNow.AddSeconds(shift_sec)
+		};
+	}
 }
 
 public class Player
@@ -40,14 +95,7 @@ public class Player
 
 	public List<Bet> Bets { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
-}
-
-public enum TableTier
-{
-	Tier1,
-	Tier2,
-	Tier3,
-	Tier4
+	public uint Version { get; set; }
 }
 
 public class Table
@@ -56,7 +104,7 @@ public class Table
 	public string Name { get; set; } = null!;
 	public TableTier Tier { get; set; }
 	public DateTime NextSpinTime { get; set; }
-	
+
 	public List<Player> Players { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 	public List<Bet> Bets { get; set; } = new();

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 public static class Wallet
 {
@@ -34,7 +35,9 @@ public static class Wallet
 				{ Message = $"Invalid amount. Min/max deposit is {MIN_DEPOSIT}/{MAX_DEPOSIT}" });
 
 		player.Balance += amount;
-		await db.SaveChangesAsync();
+	
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Deposit successful", Id = playerId, NewBalance = player.Balance });
 	}
@@ -55,8 +58,10 @@ public static class Wallet
 				{ Message = $"Insufficient funds" });
 
 		player.Balance -= amount;
-		await db.SaveChangesAsync();
 
-		return Results.Ok(new { Message = "Withdrawal successful", Id = player.Id, NewBalance = player.Balance });
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
+
+		return Results.Ok(new { Message = "Withdrawal successful", PlayerId = player.Id, NewBalance = player.Balance });
 	}
 }

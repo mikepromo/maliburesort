@@ -13,7 +13,9 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 		{
 			int winningNumber = Random.Shared.Next(0, 37);
 			await ProcessSpin(table, db, winningNumber);
-			await db.SaveChangesAsync();
+			
+			IResult? error = await db.TrySave();
+			if (error is not null) throw new Exception();
 		}
 	}
 
@@ -56,7 +58,6 @@ public class SpinService(TableManager manager) : BackgroundService
 			catch (Exception e)
 			{
 				Console.WriteLine(e);
-				throw;
 			}
 
 			await Task.Delay(1000, stoppingToken);

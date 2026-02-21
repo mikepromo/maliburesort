@@ -15,26 +15,25 @@ public static partial class Auth
 			return Results.Conflict($"Invalid Password format. Must be {PassMin}-{PassMax} {PassPatternDescription}");
 
 		string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Pass);
+		string nameNormalised = request.Name.ToLowerInvariant();
+
+		if (await db.Players.AnyAsync(p => p.NameNormalized == nameNormalised))
+			return Results.Conflict("Name already taken.");
 
 		Player player = new()
 		{
 			Id = Guid.NewGuid().ToString(),
 			JWTVersion = Guid.NewGuid().ToString(),
 			Name = request.Name,
-			NameNormalized = request.Name.ToLowerInvariant(),
+			NameNormalized = nameNormalised,
 			PasswordHash = passwordHash,
 			Balance = 0
 		};
 
-		try
-		{
-			await db.Players.AddAsync(player);
-			await db.SaveChangesAsync();
-		}
-		catch (DbUpdateException)
-		{
-			return Results.Conflict("Name already taken");
-		}
+		await db.Players.AddAsync(player);
+
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		return Results.Created($"/player/{player.Id}", new { player.Id });
 	}
@@ -61,7 +60,9 @@ public static partial class Auth
 		string refreshToken = Guid.NewGuid().ToString();
 		player.RefreshToken = refreshToken;
 		player.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-		await db.SaveChangesAsync();
+	
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		//; send refresh token back to client
 		context.Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
@@ -114,7 +115,9 @@ public static partial class Auth
 
 		player.JWTVersion = Guid.NewGuid().ToString();
 		player.RefreshToken = null;
-		await db.SaveChangesAsync();
+	
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		context.Response.Cookies.Delete("refreshToken");
 		return Results.Ok(new { message = "Logged out from all devices" });

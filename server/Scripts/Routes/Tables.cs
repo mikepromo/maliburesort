@@ -1,6 +1,14 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
+public enum TableTier
+{
+	Tier1,
+	Tier2,
+	Tier3,
+	Tier4
+}
+
 public static partial class Tables
 {
 	public static async Task<IResult> ListTables(MainDbContext db)
@@ -20,7 +28,7 @@ public static partial class Tables
 		return Results.Ok(tables);
 	}
 
-	public static async Task<IResult> JoinTable(string id, ClaimsPrincipal user , MainDbContext db)
+	public static async Task<IResult> JoinTable(string id, ClaimsPrincipal user, MainDbContext db)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -31,7 +39,7 @@ public static partial class Tables
 
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found");
-		
+
 		Player? player = await db.Players.FindAsync(playerId);
 		if (player == null)
 			return Results.NotFound("Player not found");
@@ -43,7 +51,9 @@ public static partial class Tables
 			return Results.BadRequest("Table is full");
 
 		table.Players.Add(player);
-		await db.SaveChangesAsync();
+
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Joined table", TableId = id, PlayerId = player.Id });
 	}
@@ -56,28 +66,31 @@ public static partial class Tables
 
 		if (table == null)
 			return Results.NotFound("Table not found");
-		
+
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found");
-		
+
 		Player? player = table.Players.FirstOrDefault(p => p.Id == playerId);
 		if (player == null)
 			return Results.NotFound("Player not at this table");
 
 		table.Players.Remove(player);
-		await db.SaveChangesAsync();
+
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		return Results.Ok(new { Message = "Left table", TableId = id, PlayerId = player.Id });
 	}
 
-	public static async Task<IResult> PlaceBet(string id, ClaimsPrincipal user, PlaceBetRequest request, MainDbContext db)
+	public static async Task<IResult> PlaceBet(string id, ClaimsPrincipal user, PlaceBetRequest request,
+		MainDbContext db)
 	{
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found");
-		
-		var player = await user.GetPlayerSecure(db); // Secure DB verification
+
+		Player? player = await user.GetPlayerSecure(db); // Secure DB verification
 		if (player == null) return Results.Unauthorized();
-		
+
 		Table? table = await db.Tables
 			.Include(t => t.Players)
 			.FirstOrDefaultAsync(t => t.Id == id);
@@ -85,7 +98,7 @@ public static partial class Tables
 		if (table == null)
 			return Results.NotFound("Table not found");
 
-		if (!table.Players.Any(p=> p.Id == playerId))
+		if (!table.Players.Any(p => p.Id == playerId))
 			return Results.BadRequest("You must join the table first");
 
 		if (request.Amount < table.MinBet() || request.Amount > table.MaxBet())
@@ -118,7 +131,9 @@ public static partial class Tables
 		};
 
 		db.Bets.Add(bet);
-		await db.SaveChangesAsync();
+		
+		IResult? error = await db.TrySave();
+		if (error is not null) return error;
 
 		return Results.Ok(new
 		{

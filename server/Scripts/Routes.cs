@@ -33,6 +33,9 @@ public static class Routes
 
 		tablesGroup.MapGet("/", Tables.ListTables)
 			.RequireRateLimiting(NORMAL);
+		
+		tablesGroup.MapGet("/{id}/state", Tables.GetTableState)
+			.RequireRateLimiting(NORMAL);
 
 		tablesGroup.MapPost("/{id}/join", Tables.JoinTable)
 			.RequireRateLimiting(NORMAL);

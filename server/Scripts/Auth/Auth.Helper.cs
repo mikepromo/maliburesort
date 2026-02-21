@@ -33,11 +33,7 @@ partial class Auth
 		       val.Length <= PassMax &&
 		       Regex.IsMatch(val, PassPattern);
 	}
-}
 
-
-public static class ClaimsExtensions
-{
 	public static bool GetPlayerId(this ClaimsPrincipal user, out string id)
 	{
 		id = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;

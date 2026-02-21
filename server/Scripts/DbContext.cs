@@ -42,7 +42,6 @@ public class MainDbContext : DbContext
 		if (saveResult is DbSaveResult.Success) return null;
 		return saveResult switch
 		{
-			DbSaveResult.Success             => Results.Ok(),
 			DbSaveResult.ConcurrencyConflict => Results.Conflict("Please try again."),
 			DbSaveResult.DbError             => Results.UnprocessableEntity("Database constraint violation"),
 			DbSaveResult.Fatal               => Results.InternalServerError(),

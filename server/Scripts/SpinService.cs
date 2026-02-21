@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
-public class TableManager(IServiceScopeFactory scopeFactory)
+public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub> hub)
 {
 	public async Task DoSpinsAsync()
 	{
@@ -31,8 +32,6 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 			.Where(b => b.TableId == table.Id && !b.IsResolved)
 			.ToListAsync();
 
-		if (bets.Count == 0) return;
-
 		foreach (Bet bet in bets)
 		{
 			bool win = bet.ChosenNumber == winningNumber;
@@ -48,6 +47,21 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 
 		if (await db.TrySaveAsync() is not DbSaveResult.Success)
 			throw new Exception();
+		
+		foreach (Bet bet in bets)
+		{
+			if (bet.Payout > 0)
+			{
+				await hub.Clients.User(bet.PlayerId)
+					.SendAsync("BalanceUpdate", bet.Player.Balance);
+			}
+		}
+
+		await hub.Clients.Group(tableId).SendAsync("ReceiveSpin", new
+		{
+			WinningNumber = winningNumber,
+			NextSpinTime = table.NextSpinTime
+		});
 	}
 }
 

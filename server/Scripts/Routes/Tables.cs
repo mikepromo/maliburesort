@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 public enum TableTier
@@ -28,7 +29,36 @@ public static partial class Tables
 		return Results.Ok(tables);
 	}
 
-	public static async Task<IResult> JoinTable(string id, ClaimsPrincipal user, MainDbContext db)
+	public static async Task<IResult> GetTableState(string id, MainDbContext db)
+	{
+		var table = await db.Tables
+			.Include(t => t.Players)
+			.Include(t => t.Bets)
+			.Where(t => t.Id == id)
+			.Select(t => new
+			{
+				t.Id,
+				t.Name,
+				t.Tier,
+				t.NextSpinTime,
+				Players = t.Players.Select(p => new { p.Id, p.Name }).ToList(),
+				ActiveBets = t.Bets.Where(b => !b.IsResolved).Select(b => new
+				{
+					b.PlayerId,
+					PlayerName = b.Player.Name,
+					b.ChosenNumber,
+					b.Amount
+				}).ToList()
+			})
+			.FirstOrDefaultAsync();
+
+		if (table == null) return Results.NotFound("Table not found");
+
+		return Results.Ok(table);
+	}
+
+	public static async Task<IResult> JoinTable(string id, ClaimsPrincipal user, MainDbContext db,
+		IHubContext<GameHub> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -55,10 +85,13 @@ public static partial class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
+		await hub.Clients.Group(id).SendAsync("PlayerJoined", player.Id);
+
 		return Results.Ok(new { Message = "Joined table", TableId = id, PlayerId = player.Id });
 	}
 
-	public static async Task<IResult> LeaveTable(string id, ClaimsPrincipal user, MainDbContext db)
+	public static async Task<IResult> LeaveTable(string id, ClaimsPrincipal user, MainDbContext db,
+		IHubContext<GameHub> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -79,11 +112,13 @@ public static partial class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
+		await hub.Clients.Group(id).SendAsync("PlayerLeft", player.Id);
+
 		return Results.Ok(new { Message = "Left table", TableId = id, PlayerId = player.Id });
 	}
 
 	public static async Task<IResult> PlaceBet(string id, ClaimsPrincipal user, PlaceBetRequest request,
-		MainDbContext db)
+		MainDbContext db, IHubContext<GameHub> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found");
@@ -131,10 +166,15 @@ public static partial class Tables
 		};
 
 		db.Bets.Add(bet);
-		
+
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
+		await hub.Clients.Group(id)
+			.SendAsync("BetPlaced", new { player.Id, player.Name, request.Amount, request.ChosenNumber });
+		
+		await hub.Clients.User(player.Id).SendAsync("BalanceUpdate", player.Balance);
+		
 		return Results.Ok(new
 		{
 			Message = "Bet placed",

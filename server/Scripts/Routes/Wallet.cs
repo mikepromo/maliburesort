@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 public static class Wallet
@@ -19,7 +20,7 @@ public static class Wallet
 		return Results.Ok(new { PlayerId = playerId, Balance = balance });
 	}
 
-	public static async Task<IResult> Deposit(ClaimsPrincipal user, WalletTransaction request, MainDbContext db)
+	public static async Task<IResult> Deposit(ClaimsPrincipal user, WalletTransaction request, MainDbContext db, IHubContext<GameHub> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found");
@@ -39,10 +40,12 @@ public static class Wallet
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
+		await hub.Clients.User(player.Id).SendAsync("BalanceUpdate", player.Balance);
+		
 		return Results.Ok(new { Message = "Deposit successful", Id = playerId, NewBalance = player.Balance });
 	}
 
-	public static async Task<IResult> Withdraw(ClaimsPrincipal user, WalletTransaction request, MainDbContext db)
+	public static async Task<IResult> Withdraw(ClaimsPrincipal user, WalletTransaction request, MainDbContext db, IHubContext<GameHub> hub)
 	{
 		Player? player = await user.GetPlayerSecure(db);
 		if (player == null) return Results.Unauthorized();
@@ -61,6 +64,8 @@ public static class Wallet
 
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
+		
+		await hub.Clients.User(player.Id).SendAsync("BalanceUpdate", player.Balance);
 
 		return Results.Ok(new { Message = "Withdrawal successful", PlayerId = player.Id, NewBalance = player.Balance });
 	}

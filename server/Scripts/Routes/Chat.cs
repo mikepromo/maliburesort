@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 public static class Chat
@@ -26,7 +27,7 @@ public static class Chat
 	}
 
 	public static async Task<IResult> SendInChat(string id, ClaimsPrincipal user, SendChatRequest request,
-		MainDbContext db)
+		MainDbContext db, IHubContext<GameHub> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -52,9 +53,18 @@ public static class Chat
 		};
 
 		db.ChatMessages.Add(msg);
-		
+
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
+
+		await hub.Clients.Group(id).SendAsync("ReceiveChat", new
+		{
+			msg.Id,
+			PlayerId = player.Id,
+			PlayerName = player.Name,
+			msg.Message,
+			msg.SentAt
+		});
 
 		return Results.Ok(new { msg.Id, msg.SentAt });
 	}

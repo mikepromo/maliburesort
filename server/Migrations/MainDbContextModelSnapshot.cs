@@ -27,7 +27,7 @@ namespace server.Migrations
                         .HasColumnType("text");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("ChosenNumber")
                         .HasColumnType("integer");
@@ -36,7 +36,7 @@ namespace server.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<decimal>("Payout")
-                        .HasColumnType("numeric");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("PlacedAt")
                         .HasColumnType("timestamp with time zone");
@@ -99,7 +99,11 @@ namespace server.Migrations
                         .HasColumnType("text");
 
                     b.Property<decimal>("Balance")
-                        .HasColumnType("numeric");
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("JWTVersion")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -112,6 +116,12 @@ namespace server.Migrations
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("RefreshTokenExpiry")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("TableId")
                         .HasColumnType("text");

@@ -12,10 +12,6 @@ problems:
 1) we can withdraw and spin right away? 
 
 todo:
-* xunits
 * signalR
 * blazor client
 * billing microservice
-
-* test by hand
-* add ratelimiting

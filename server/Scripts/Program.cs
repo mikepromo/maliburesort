@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -20,6 +21,7 @@ public class Program
 			builder.Services.AddSwaggerGen();
 		}
 
+		InitRateLimiting();
 		InitAuth();
 
 		WebApplication app = builder.Build();
@@ -34,6 +36,8 @@ public class Program
 
 		app.UseAuthentication();
 		app.UseAuthorization();
+
+		app.UseRateLimiter();
 
 		Routes.MapRouters(app);
 
@@ -53,6 +57,29 @@ public class Program
 					                  ??
 					                  "Host=localhost;Database=maliburesort_server_db;Username=postgres;Password=pass123"));
 			}
+		}
+
+		void InitRateLimiting()
+		{
+			builder.Services.AddRateLimiter(options =>
+			{
+				options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+				RateLimitPartition<string> GetIpPartition(HttpContext context, int limit, int seconds = 60)
+				{
+					return RateLimitPartition.GetFixedWindowLimiter(
+						context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+						_ => new FixedWindowRateLimiterOptions
+						{
+							PermitLimit = limit,
+							Window = TimeSpan.FromSeconds(seconds)
+						});
+				}
+
+				options.AddPolicy(Routes.BILLING, context => GetIpPartition(context, 1));
+				options.AddPolicy(Routes.AUTH, context => GetIpPartition(context, 5));
+				options.AddPolicy(Routes.NORMAL, context => GetIpPartition(context, 100));
+			});
 		}
 
 		void InitAuth()

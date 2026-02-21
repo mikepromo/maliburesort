@@ -55,10 +55,11 @@ public class Table
 	public string Id { get; set; } = null!;
 	public string Name { get; set; } = null!;
 	public TableTier Tier { get; set; }
+	public DateTime NextSpinTime { get; set; }
+	
 	public List<Player> Players { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 	public List<Bet> Bets { get; set; } = new();
-	public DateTime NextSpinTime { get; set; }
 }
 
 public class Bet

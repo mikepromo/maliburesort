@@ -11,12 +11,13 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 
 		foreach (Table table in tables)
 		{
-			await ProcessTableSpin(table, db);
+			int winningNumber = Random.Shared.Next(0, 37);
+			await ProcessSpin(table, db, winningNumber);
 			await db.SaveChangesAsync();
 		}
 	}
 
-	async Task ProcessTableSpin(Table table, MainDbContext db)
+	public async Task ProcessSpin(Table table, MainDbContext db, int winningNumber)
 	{
 		table.NextSpinTime = DateTime.UtcNow.AddSeconds(table.SpinInterval_sec());
 
@@ -26,8 +27,6 @@ public class TableManager(IServiceScopeFactory scopeFactory)
 			.ToListAsync();
 
 		if (bets.Count == 0) return;
-
-		int winningNumber = Random.Shared.Next(0, 37);
 
 		foreach (Bet bet in bets)
 		{
@@ -50,7 +49,16 @@ public class SpinService(TableManager manager) : BackgroundService
 	{
 		while (!stoppingToken.IsCancellationRequested)
 		{
-			await manager.DoSpinsAsync();
+			try
+			{
+				await manager.DoSpinsAsync();
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+				throw;
+			}
+
 			await Task.Delay(1000, stoppingToken);
 		}
 	}

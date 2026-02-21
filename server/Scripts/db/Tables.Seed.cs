@@ -1,4 +1,4 @@
-partial class tables
+partial class Tables
 {
 	public static async Task SeedTables(MainDbContext db)
 	{

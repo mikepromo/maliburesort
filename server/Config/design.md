@@ -1,18 +1,3 @@
-/register name pass
-/login name pass
-/logout
-
-/deposit X
-/withdraw X
-/balance
-
-/enter table_id
-/exit
-
-/bet 0-36 amount
-
-/chat message
-
 3 screens:
 1) login with logo
 2) table selection

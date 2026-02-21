@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-partial class auth
+partial class Auth
 {
 	public const int NameMin = 4;
 	public const int NameMax = 16;

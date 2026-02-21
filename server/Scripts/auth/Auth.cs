@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-public static partial class auth
+public static partial class Auth
 {
 	public static async Task<IResult> Register(PlayerCredentials request, MainDbContext db)
 	{

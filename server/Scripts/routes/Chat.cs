@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
-public static class chat
+public static class Chat
 {
 	const int DEFAULT_PAGINATION = 50;
 

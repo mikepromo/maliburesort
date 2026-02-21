@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
-public static partial class tables
+public static partial class Tables
 {
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{

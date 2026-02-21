@@ -1,27 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 
-public class SpinService(IServiceScopeFactory scopeFactory) : BackgroundService
+public class TableManager(IServiceScopeFactory scopeFactory)
 {
-	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-	{
-		while (!stoppingToken.IsCancellationRequested)
-		{
-			await DoSpinsAsync();
-			await Task.Delay(1000, stoppingToken);
-		}
-	}
-
-	async Task DoSpinsAsync()
+	public async Task DoSpinsAsync()
 	{
 		using IServiceScope scope = scopeFactory.CreateScope();
 		MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 		DateTime now = DateTime.UtcNow;
+		List<Table> tables = await db.Tables.Where(t => t.NextSpinTime <= now).ToListAsync();
 
-		List<Table> toSpinTables = await db.Tables
-			.Where(t => t.NextSpinTime <= now)
-			.ToListAsync();
-
-		foreach (Table table in toSpinTables)
+		foreach (Table table in tables)
 		{
 			await ProcessTableSpin(table, db);
 			await db.SaveChangesAsync();
@@ -52,6 +40,18 @@ public class SpinService(IServiceScopeFactory scopeFactory) : BackgroundService
 			bet.ResolvedAt = DateTime.UtcNow;
 
 			bet.Player.Balance += payout;
+		}
+	}
+}
+
+public class SpinService(TableManager manager) : BackgroundService
+{
+	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+	{
+		while (!stoppingToken.IsCancellationRequested)
+		{
+			await manager.DoSpinsAsync();
+			await Task.Delay(1000, stoppingToken);
 		}
 	}
 }

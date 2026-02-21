@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-public static class ldb
+public static class Ldb
 {
 	public static async Task<IResult> GetLeaderboard(string id, MainDbContext db)
 	{

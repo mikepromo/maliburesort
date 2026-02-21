@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-public static class wallet
+public static class Wallet
 {
 	public const decimal MIN_DEPOSIT = 1_000;
 	public const decimal MAX_DEPOSIT = 1_000_000;
@@ -15,7 +15,7 @@ public static class wallet
 		if (player is null) return Results.NotFound();
 		decimal balance = player.Balance;
 
-		return Results.Ok(new { Id = playerId, Balance = balance });
+		return Results.Ok(new { PlayerId = playerId, Balance = balance });
 	}
 
 	public static async Task<IResult> Deposit(ClaimsPrincipal user, WalletTransaction request, MainDbContext db)

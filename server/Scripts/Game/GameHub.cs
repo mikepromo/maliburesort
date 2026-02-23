@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using shared;
 
 [Authorize]
 public class GameHub(IServiceScopeFactory scopeFactory) : Hub
@@ -22,7 +23,7 @@ public class GameHub(IServiceScopeFactory scopeFactory) : Hub
 
 		if (playerId != null)
 		{
-			//; Remove any tables this player is stuck-sitting at
+			//; remove any tables this player is stuck-sitting at
 			using IServiceScope scope = scopeFactory.CreateScope();
 			MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 
@@ -36,7 +37,7 @@ public class GameHub(IServiceScopeFactory scopeFactory) : Hub
 				Player player = table.Players.First(p => p.Id == playerId);
 				table.Players.Remove(player);
 
-				await Clients.Group(table.Id).SendAsync("PlayerLeft", player.Name);
+				await Clients.Group(table.Id).SendAsync(RPC.PlayerLeft, player.Name);
 			}
 
 			if (tablesWithPlayer.Any())

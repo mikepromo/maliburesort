@@ -6,6 +6,15 @@
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
+        <PropertyGroup>
+         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  <StartDate>2026-02-21</StartDate>
+  <DaysSinceStart>$([System.Math]::Floor($([System.DateTime]::UtcNow.Subtract($([System.DateTime]::Parse($(StartDate)))).TotalDays)))</DaysSinceStart>
+  <MinutesToday>$([System.Math]::Floor($([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes)))</MinutesToday>
+  <SecondsNow>$([System.DateTime]::UtcNow.Second)</SecondsNow>
+  <InformationalVersion>0.$(DaysSinceStart).$(MinutesToday).$(SecondsNow)</InformationalVersion>
+</PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.13" />
@@ -20,6 +29,10 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.4" />
         <InternalsVisibleTo Include="tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\shared\shared.csproj" />
     </ItemGroup>
 
 </Project>

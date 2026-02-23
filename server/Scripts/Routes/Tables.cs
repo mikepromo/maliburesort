@@ -1,29 +1,19 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using shared;
 
-public enum TableTier
-{
-	Tier1,
-	Tier2,
-	Tier3,
-	Tier4
-}
-
-public static partial class Tables
+public static class Tables
 {
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
-		var tables = (await db.Tables.Include(t => t.Players).ToListAsync())
-			.Select(t => new
+		List<TableDto> tables = (await db.Tables.Include(t => t.Players).ToListAsync())
+			.Select(t => new TableDto
 			{
-				t.Id,
-				t.Name,
-				MinBet = t.MinBet(),
-				MaxBet = t.MaxBet(),
-				MaxSeats = t.MaxSeats(),
-				PlayerCount = t.Players.Count,
-				t.NextSpinTime
+				Id = t.Id,
+				Name = t.Name,
+				Tier = t.Tier,
+				PlayerCount = t.Players.Count
 			}).ToList();
 
 		return Results.Ok(tables);
@@ -31,23 +21,24 @@ public static partial class Tables
 
 	public static async Task<IResult> GetTableState(string id, MainDbContext db)
 	{
-		var table = await db.Tables
+		TableStateDto? table = await db.Tables
 			.Include(t => t.Players)
 			.Include(t => t.Bets)
 			.Where(t => t.Id == id)
-			.Select(t => new
+			.Select(t => new TableStateDto
 			{
-				t.Id,
-				t.Name,
-				t.Tier,
-				t.NextSpinTime,
-				Players = t.Players.Select(p => new { p.Id, p.Name }).ToList(),
-				ActiveBets = t.Bets.Where(b => !b.IsResolved).Select(b => new
+				Id = t.Id,
+				Name = t.Name,
+				Tier = t.Tier,
+				NextSpinTime = t.NextSpinTime,
+				Players = t.Players.Select(p => new PlayerDTO { Id = p.Id, Name = p.Name, Balance = p.Balance })
+					.ToList(),
+				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => new BetDTO
 				{
-					b.PlayerId,
+					PlayerId = b.PlayerId,
 					PlayerName = b.Player.Name,
-					b.ChosenNumber,
-					b.Amount
+					ChosenNumber = b.ChosenNumber,
+					Amount = b.Amount
 				}).ToList()
 			})
 			.FirstOrDefaultAsync();
@@ -77,7 +68,7 @@ public static partial class Tables
 		if (table.Players.Any(p => p.Id == playerId))
 			return Results.Conflict("Player already at this table");
 
-		if (table.Players.Count >= table.MaxSeats())
+		if (table.Players.Count >= table.Tier.MaxSeats())
 			return Results.BadRequest("Table is full");
 
 		table.Players.Add(player);
@@ -85,9 +76,9 @@ public static partial class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id).SendAsync("PlayerJoined", player.Id);
+		await hub.Clients.Group(id).SendAsync(RPC.PlayerJoined, player.Id);
 
-		return Results.Ok(new { Message = "Joined table", TableId = id, PlayerId = player.Id });
+		return Results.Ok();
 	}
 
 	public static async Task<IResult> LeaveTable(string id, ClaimsPrincipal user, MainDbContext db,
@@ -112,9 +103,9 @@ public static partial class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id).SendAsync("PlayerLeft", player.Id);
+		await hub.Clients.Group(id).SendAsync(RPC.PlayerLeft, player.Id);
 
-		return Results.Ok(new { Message = "Left table", TableId = id, PlayerId = player.Id });
+		return Results.Ok();
 	}
 
 	public static async Task<IResult> PlaceBet(string id, ClaimsPrincipal user, PlaceBetRequest request,
@@ -136,8 +127,9 @@ public static partial class Tables
 		if (!table.Players.Any(p => p.Id == playerId))
 			return Results.BadRequest("You must join the table first");
 
-		if (request.Amount < table.MinBet() || request.Amount > table.MaxBet())
-			return Results.BadRequest($"Bet must be between {table.MinBet()} and {table.MaxBet()}");
+		if (request.Amount < table.Tier.MinBet() ||
+		    request.Amount > table.Tier.MaxBet())
+			return Results.BadRequest($"Bet must be between {table.Tier.MinBet()} and {table.Tier.MaxBet()}");
 
 		if (request.ChosenNumber < 0 || request.ChosenNumber > 36)
 			return Results.BadRequest("Number must be between 0 and 36");
@@ -171,56 +163,10 @@ public static partial class Tables
 		if (error is not null) return error;
 
 		await hub.Clients.Group(id)
-			.SendAsync("BetPlaced", new { player.Id, player.Name, request.Amount, request.ChosenNumber });
-		
-		await hub.Clients.User(player.Id).SendAsync("BalanceUpdate", player.Balance);
-		
-		return Results.Ok(new
-		{
-			Message = "Bet placed",
-			BetId = bet.Id,
-			RemainingBalance = player.Balance
-		});
-	}
+			.SendAsync(RPC.BetPlaced, new { player.Id, player.Name, request.Amount, request.ChosenNumber });
 
-	public static decimal MinBet(this Table table)
-	{
-		return table.Tier switch
-		{
-			TableTier.Tier1 => 10,
-			TableTier.Tier2 => 20,
-			TableTier.Tier3 => 30,
-			TableTier.Tier4 => 50,
-			_               => throw new ArgumentOutOfRangeException()
-		};
-	}
+		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
 
-	public static decimal MaxBet(this Table table)
-	{
-		return table.Tier switch
-		{
-			TableTier.Tier1 => 100,
-			TableTier.Tier2 => 200,
-			TableTier.Tier3 => 300,
-			TableTier.Tier4 => 500,
-			_               => throw new ArgumentOutOfRangeException()
-		};
-	}
-
-	public static int MaxSeats(this Table table)
-	{
-		return table.Tier switch
-		{
-			TableTier.Tier1 => 40,
-			TableTier.Tier2 => 20,
-			TableTier.Tier3 => 10,
-			TableTier.Tier4 => 4,
-			_               => throw new ArgumentOutOfRangeException()
-		};
-	}
-
-	public static int SpinInterval_sec(this Table table)
-	{
-		return 30;
+		return Results.Ok();
 	}
 }

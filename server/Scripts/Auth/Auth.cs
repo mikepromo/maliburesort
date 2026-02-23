@@ -3,16 +3,19 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using shared;
 
 public static partial class Auth
 {
 	public static async Task<IResult> Register(PlayerCredentials request, MainDbContext db)
 	{
-		if (!IsValidName(request.Name))
-			return Results.Conflict($"Invalid Name format. Must be {NameMin}-{NameMax} {NamePatternDescription}");
+		string? nameError = Validation.IsValidName(request.Name);
+		if (nameError != null)
+			return Results.Conflict(nameError);
 
-		if (!IsValidPass(request.Pass))
-			return Results.Conflict($"Invalid Password format. Must be {PassMin}-{PassMax} {PassPatternDescription}");
+		string? passError = Validation.IsValidPass(request.Name);
+		if (passError != null)
+			return Results.Conflict(passError);
 
 		string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Pass);
 		string nameNormalised = request.Name.ToLowerInvariant();
@@ -35,7 +38,7 @@ public static partial class Auth
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		return Results.Created($"/player/{player.Id}", new { player.Id });
+		return Results.Ok(player.GetDTO());
 	}
 
 	public static async Task<IResult> Login(PlayerCredentials request, MainDbContext db, HttpContext context,
@@ -46,8 +49,11 @@ public static partial class Auth
 		Player? player = await db.Players
 			.FirstOrDefaultAsync(p => p.NameNormalized == normalized);
 
+		if (player == null)
+			return Results.NotFound();
+
 		//; verify password
-		if (player == null || !BCrypt.Net.BCrypt.Verify(request.Pass, player.PasswordHash))
+		if (!BCrypt.Net.BCrypt.Verify(request.Pass, player.PasswordHash))
 			return Results.Unauthorized();
 
 		//; generate JWT
@@ -60,7 +66,7 @@ public static partial class Auth
 		string refreshToken = Guid.NewGuid().ToString();
 		player.RefreshToken = refreshToken;
 		player.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-	
+
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
@@ -72,13 +78,8 @@ public static partial class Auth
 			SameSite = SameSiteMode.Strict,
 			Expires = player.RefreshTokenExpiry
 		});
-
-		//; reply with token
-		return Results.Ok(new
-		{
-			JWT = jwt,
-			Player = new { player.Id, player.Name, player.Balance, Message = "Logged in" }
-		});
+	
+		return Results.Ok(new JWTResponse(jwt, player.GetDTO()));
 	}
 
 	public static async Task<IResult> Refresh(HttpContext context, MainDbContext db,
@@ -97,11 +98,7 @@ public static partial class Auth
 		if (key is null || !GenerateJWT(player, key, out string jwt))
 			return Results.InternalServerError();
 
-		return Results.Ok(new
-		{
-			JWT = jwt,
-			Message = "Token refreshed"
-		});
+		return Results.Ok(new JWTResponse(jwt, player.GetDTO()));
 	}
 
 	public static async Task<IResult> Logout(ClaimsPrincipal user, MainDbContext db, HttpContext context)
@@ -115,12 +112,12 @@ public static partial class Auth
 
 		player.JWTVersion = Guid.NewGuid().ToString();
 		player.RefreshToken = null;
-	
+
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
 		context.Response.Cookies.Delete("refreshToken");
-		return Results.Ok(new { message = "Logged out from all devices" });
+		return Results.NoContent();
 	}
 
 	static bool GenerateJWT(Player player, string key, out string tokenString)
@@ -148,5 +145,28 @@ public static partial class Auth
 
 		tokenString = tokenString_nullable;
 		return true;
+	}
+
+	public static bool GetPlayerId(this ClaimsPrincipal user, out string id)
+	{
+		id = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+		return id != string.Empty;
+	}
+
+	public static async Task<Player?> GetPlayerSecure(this ClaimsPrincipal user, MainDbContext db)
+	{
+		if (!user.GetPlayerId(out string playerId))
+			return null;
+
+		string? tokenVersion = user.FindFirst(ClaimTypes.Version)?.Value;
+
+		if (string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(tokenVersion))
+			return null;
+
+		Player? player = await db.Players.FindAsync(playerId);
+		if (player == null || player.JWTVersion != tokenVersion)
+			return null;
+
+		return player;
 	}
 }

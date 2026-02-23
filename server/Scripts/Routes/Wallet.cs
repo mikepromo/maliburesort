@@ -1,13 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+using shared;
 
 public static class Wallet
 {
-	public const decimal MIN_DEPOSIT = 1_000;
-	public const decimal MAX_DEPOSIT = 1_000_000;
-	public const decimal MIN_WITHDRAWAL = 1_000;
-
 	public static async Task<IResult> Balance(ClaimsPrincipal user, MainDbContext db)
 	{
 		if (!user.GetPlayerId(out string playerId))
@@ -17,10 +13,11 @@ public static class Wallet
 		if (player is null) return Results.NotFound();
 		decimal balance = player.Balance;
 
-		return Results.Ok(new { PlayerId = playerId, Balance = balance });
+		return Results.Ok(new WalletTransaction(balance));
 	}
 
-	public static async Task<IResult> Deposit(ClaimsPrincipal user, WalletTransaction request, MainDbContext db, IHubContext<GameHub> hub)
+	public static async Task<IResult> Deposit(ClaimsPrincipal user, WalletTransaction request, MainDbContext db,
+		IHubContext<GameHub> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found");
@@ -31,30 +28,31 @@ public static class Wallet
 
 		decimal amount = request.Amount;
 
-		if (amount < MIN_DEPOSIT || amount > MAX_DEPOSIT)
-			return Results.BadRequest(new
-				{ Message = $"Invalid amount. Min/max deposit is {MIN_DEPOSIT}/{MAX_DEPOSIT}" });
+		string? depositError = Validation.IsValidDeposit(amount);
+		if (depositError != null)
+			return Results.BadRequest(new { Message = depositError });
 
 		player.Balance += amount;
-	
+
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.User(player.Id).SendAsync("BalanceUpdate", player.Balance);
-		
-		return Results.Ok(new { Message = "Deposit successful", Id = playerId, NewBalance = player.Balance });
+		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
+
+		return Results.Ok(new WalletTransaction(player.Balance));
 	}
 
-	public static async Task<IResult> Withdraw(ClaimsPrincipal user, WalletTransaction request, MainDbContext db, IHubContext<GameHub> hub)
+	public static async Task<IResult> Withdraw(ClaimsPrincipal user, WalletTransaction request, MainDbContext db,
+		IHubContext<GameHub> hub)
 	{
 		Player? player = await user.GetPlayerSecure(db);
 		if (player == null) return Results.Unauthorized();
 
 		decimal amount = request.Amount;
 
-		if (amount < MIN_WITHDRAWAL)
-			return Results.BadRequest(new
-				{ Message = $"Invalid amount. Min withdrawal is {MIN_WITHDRAWAL}" });
+		string? withdrawalError = Validation.IsValidWithdrawal(amount);
+		if (withdrawalError != null)
+			return Results.BadRequest(new { Message = withdrawalError });
 
 		if (amount > player.Balance)
 			return Results.BadRequest(new
@@ -64,9 +62,9 @@ public static class Wallet
 
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
-		
-		await hub.Clients.User(player.Id).SendAsync("BalanceUpdate", player.Balance);
 
-		return Results.Ok(new { Message = "Withdrawal successful", PlayerId = player.Id, NewBalance = player.Balance });
+		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
+
+		return Results.Ok(new WalletTransaction(player.Balance));
 	}
 }

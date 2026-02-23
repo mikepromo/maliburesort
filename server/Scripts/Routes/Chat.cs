@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using shared;
 
 public static class Chat
 {
@@ -9,17 +10,17 @@ public static class Chat
 	public static async Task<IResult> GetChat(string id, int? count, MainDbContext db)
 	{
 		count ??= DEFAULT_PAGINATION;
-		var messages = await db.ChatMessages
+		List<ChatMessageDTO> messages = await db.ChatMessages
 			.Where(cm => cm.TableId == id)
 			.OrderByDescending(cm => cm.SentAt)
 			.Take(count.Value)
-			.Select(cm => new
+			.Select(cm => new ChatMessageDTO
 			{
-				cm.Id,
-				cm.PlayerId,
+				Id = cm.Id,
+				PlayerId = cm.Player.Id,
 				PlayerName = cm.Player.Name,
-				cm.Message,
-				cm.SentAt
+				Message = cm.Message,
+				SentAt = cm.SentAt
 			})
 			.ToListAsync();
 
@@ -43,7 +44,7 @@ public static class Chat
 		if (player == null)
 			return Results.BadRequest("You must join the table first");
 
-		ChatMessage msg = new()
+		ChatMessage cm = new()
 		{
 			Id = Guid.NewGuid().ToString(),
 			TableId = id,
@@ -52,20 +53,21 @@ public static class Chat
 			SentAt = DateTime.UtcNow
 		};
 
-		db.ChatMessages.Add(msg);
+		db.ChatMessages.Add(cm);
 
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id).SendAsync("ReceiveChat", new
-		{
-			msg.Id,
-			PlayerId = player.Id,
-			PlayerName = player.Name,
-			msg.Message,
-			msg.SentAt
-		});
+		await hub.Clients.Group(id).SendAsync(RPC.ReceiveChat,
+			new ChatMessageDTO
+			{
+				Id = cm.Id,
+				PlayerId = player.Id,
+				PlayerName = player.Name,
+				Message = cm.Message,
+				SentAt = cm.SentAt
+			});
 
-		return Results.Ok(new { msg.Id, msg.SentAt });
+		return Results.Ok();
 	}
 }

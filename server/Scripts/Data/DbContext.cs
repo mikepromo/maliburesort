@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using shared;
 
 public enum DbSaveResult
 {
@@ -117,6 +118,16 @@ public class Player
 	public List<Bet> Bets { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 	public uint Version { get; set; }
+
+	public PlayerDTO GetDTO()
+	{
+		return new PlayerDTO
+		{
+			Id = Id,
+			Name = Name,
+			Balance = Balance
+		};
+	}
 }
 
 public class Table

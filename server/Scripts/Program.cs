@@ -14,6 +14,7 @@ public class Program
 
 		builder.Services.AddSingleton<TableManager>();
 		builder.Services.AddHostedService<SpinService>();
+		builder.Services.AddSignalR();
 
 		if (builder.Environment.IsDevelopment())
 		{
@@ -42,8 +43,6 @@ public class Program
 
 		app.UseAuthentication();
 		app.UseAuthorization();
-		
-		builder.Services.AddSignalR();
 
 		if (!builder.Environment.IsDevelopment())
 		{

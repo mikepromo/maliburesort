@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using shared;
 
 public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub> hub)
 {
@@ -25,7 +26,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 	public async Task ProcessSpin(string tableId, MainDbContext db, int winningNumber)
 	{
 		Table? table = await db.Tables.FindAsync(tableId);
-		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.SpinInterval_sec());
+		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.Tier.SpinInterval_sec());
 
 		List<Bet> bets = await db.Bets
 			.Include(b => b.Player)
@@ -53,11 +54,11 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			if (bet.Payout > 0)
 			{
 				await hub.Clients.User(bet.PlayerId)
-					.SendAsync("BalanceUpdate", bet.Player.Balance);
+					.SendAsync(RPC.BalanceUpdate, bet.Player.Balance);
 			}
 		}
 
-		await hub.Clients.Group(tableId).SendAsync("ReceiveSpin", new
+		await hub.Clients.Group(tableId).SendAsync(RPC.ReceiveSpin, new
 		{
 			WinningNumber = winningNumber,
 			NextSpinTime = table.NextSpinTime

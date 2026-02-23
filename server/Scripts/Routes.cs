@@ -1,3 +1,5 @@
+using System.Reflection;
+
 public static class Routes
 {
 	public const string NORMAL = nameof(NORMAL);
@@ -6,9 +8,11 @@ public static class Routes
 
 	public static void MapRouters(WebApplication app)
 	{
-		app.MapGet("/", () => "Welcome to the Malibu Resort.\n" +
-		                      "Where the sun laughs and monkeys walk in gold.");
+		app.MapGet("/", () => "Welcome to the Malibu Resort API.");
 
+		app.MapGet("/version", () => new { Version = Version.VersionOf(Assembly.GetExecutingAssembly()) })
+			.AllowAnonymous();
+		
 		RouteGroupBuilder authGroup = app.MapGroup("/auth")
 			.RequireRateLimiting(AUTH);
 
@@ -33,31 +37,18 @@ public static class Routes
 
 		tablesGroup.MapGet("/", Tables.ListTables)
 			.RequireRateLimiting(NORMAL);
-		
 		tablesGroup.MapGet("/{id}/state", Tables.GetTableState)
 			.RequireRateLimiting(NORMAL);
-
 		tablesGroup.MapPost("/{id}/join", Tables.JoinTable)
 			.RequireRateLimiting(NORMAL);
-
 		tablesGroup.MapPost("/{id}/leave", Tables.LeaveTable)
 			.RequireRateLimiting(NORMAL);
-
 		tablesGroup.MapPost("/{id}/bet", Tables.PlaceBet)
 			.RequireRateLimiting(BILLING);
-
 		tablesGroup.MapGet("/{id}/chat", Chat.GetChat)
 			.RequireRateLimiting(NORMAL);
-
 		tablesGroup.MapPost("/{id}/chat", Chat.SendInChat)
 			.RequireRateLimiting(NORMAL);
-
 		tablesGroup.MapGet("/{id}/leaderboard", Ldb.GetLeaderboard)
-			.RequireRateLimiting(NORMAL);
-	}
+			.RequireRateLimiting(NORMAL); }
 }
-
-public record PlayerCredentials(string Name, string Pass);
-public record WalletTransaction(decimal Amount);
-public record PlaceBetRequest(int ChosenNumber, decimal Amount);
-public record SendChatRequest(string Message);

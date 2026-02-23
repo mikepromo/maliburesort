@@ -178,7 +178,7 @@ public class Bet
 			Id = Id,
 			TableId = TableId,
 			PlayerId = PlayerId,
-			PlayerName = Player?.Name,
+			PlayerName = Player?.Name ?? "Unknown",
 			ChosenNumber = ChosenNumber,
 			Amount = Amount
 		};
@@ -204,7 +204,7 @@ public class ChatMessage
 			Id = Id,
 			TableId = TableId,
 			PlayerId = PlayerId,
-			PlayerName = Player?.Name,
+			PlayerName = Player?.Name ?? "Unknown",
 			Message = Message,
 			SentAt = SentAt
 		};

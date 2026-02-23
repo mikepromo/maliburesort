@@ -1,0 +1,33 @@
+@page "/game/{TableId}"
+@inject HttpClient Http
+@inject MalibuState State
+@implements IDisposable
+
+<div style="display:flex; justify-content:space-between">
+    <h3>TABLE: @(gameState?.Name ?? "CONNECTING...")</h3>
+    <h3>TIMER: @(gameState == null ? "" : $"{timeLeft} s")</h3>
+</div>
+
+<!-- roulette board -->
+<div class="roulette-board">
+    @for (int i = 1; i <= 36; i++)
+    {
+        int num = i;
+        <div class="num-btn" @onclick="() => PlaceBet(num, 10)">
+            @num
+            @if (MyBets.TryGetValue(num, out decimal amount))
+            {
+                <span style="display:block; font-size:0.7em">(@amount)</span>
+            }
+        </div>
+    }
+</div>
+
+<!-- recent chat / events -->
+<div
+    style="height: 150px; border: 1px solid #008f11; overflow-y:scroll; padding:5px; font-size: 0.9rem; font-family: monospace;">
+    @foreach (string msg in logs)
+    {
+        <div>@msg</div>
+    }
+</div>

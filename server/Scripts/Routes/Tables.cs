@@ -29,6 +29,8 @@ public static class Tables
 					.ToList(),
 				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => new BetDTO
 				{
+					Id = b.Id,
+					TableId = b.TableId,
 					PlayerId = b.PlayerId,
 					PlayerName = b.Player.Name,
 					ChosenNumber = b.ChosenNumber,
@@ -110,7 +112,7 @@ public static class Tables
 			return Results.NotFound("Player not found".Err());
 
 		Player? player = await user.GetPlayerSecure(db);
-		if (player == null) 
+		if (player == null)
 			return Results.Unauthorized();
 
 		Table? table = await db.Tables
@@ -159,7 +161,7 @@ public static class Tables
 		if (error is not null) return error;
 
 		await hub.Clients.Group(id)
-			.SendAsync(RPC.BetPlaced, new { player.Id, player.Name, request.Amount, request.ChosenNumber });
+			.SendAsync(RPC.BetPlaced, bet.Wrap());
 
 		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
 

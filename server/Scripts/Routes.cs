@@ -8,10 +8,12 @@ public static class Routes
 
 	public static void MapRouters(WebApplication app)
 	{
-		app.MapGet("/", () => "Welcome to the Malibu Resort API.");
+		app.MapGet("/", () => "Welcome to the Malibu Resort API.")
+			.RequireRateLimiting(NORMAL);
 
 		app.MapGet("/version", () => new { Version = Version.VersionOf(Assembly.GetExecutingAssembly()) })
-			.AllowAnonymous();
+			.AllowAnonymous()
+			.RequireRateLimiting(NORMAL);
 		
 		RouteGroupBuilder authGroup = app.MapGroup("/auth")
 			.RequireRateLimiting(AUTH);

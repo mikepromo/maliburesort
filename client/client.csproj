@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <PropertyGroup>
+     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  <StartDate>2026-02-21</StartDate>
+  <DaysSinceStart>$([System.Math]::Floor($([System.DateTime]::UtcNow.Subtract($([System.DateTime]::Parse($(StartDate)))).TotalDays)))</DaysSinceStart>
+  <MinutesToday>$([System.Math]::Floor($([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes)))</MinutesToday>
+  <SecondsNow>$([System.DateTime]::UtcNow.Second)</SecondsNow>
+  <InformationalVersion>0.$(DaysSinceStart).$(MinutesToday).$(SecondsNow)</InformationalVersion>
+</PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="9.0.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.12" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.12" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.13" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\shared\shared.csproj" />
+    </ItemGroup>
+
+</Project>

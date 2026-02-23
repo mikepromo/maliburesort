@@ -1,0 +1,74 @@
+@page "/"
+@inject MalibuState State
+
+<div class="login-container">
+    <div class="login-title">Malibu Resort</div>
+    <div class="login-subtitle">
+        ROULETTE TERMINAL
+    </div>
+    
+    <!-- Inputs -->
+    <div class="terminal-form">
+        <span class="login-label">@(isRegisterMode ? "CHOOSE IDENTIFIER" : "LOGIN NAME")</span>
+        <input @ref="nameInput"
+               class="login-input"
+               @bind="name"
+               @bind:event="oninput"
+               @onkeydown="HandleNameKey"
+               type="text"
+               autocomplete="off"
+               autofocus />
+
+        <span class="login-label">PASSWORD</span>
+        <input @ref="passInput"
+               class="login-input"
+               @bind="pass"
+               @bind:event="oninput"
+               @onkeydown="HandlePassKey"
+               type="password" />
+
+        @if (isRegisterMode)
+        {
+            <span class="login-label">CONFIRM PASSWORD</span>
+            <input @ref="confirmInput"
+                   class="login-input"
+                   @bind="passConfirm"
+                   @bind:event="oninput"
+                   @onkeydown="HandleConfirmKey"
+                   type="password" />
+        }
+
+        <br/>
+        
+        <button class="login-btn" @onclick="ExecuteConfirm">
+            @(isRegisterMode ? "INITIALIZE ID" : "AUTHENTICATE")
+        </button>
+    </div>
+
+    <!-- Context Switchers -->
+    <div class="login-links">
+        @if (isRegisterMode)
+        {
+            <div tabindex="0" style="cursor: pointer; outline: none;" 
+                 @onclick="ToggleMode" 
+                 @onkeydown="HandleToggleKey">
+                &lt; BACK TO LOGIN
+            </div>
+        }
+        else
+        {
+            <div tabindex="0" style="cursor: pointer; outline: none;" 
+                 @onclick="ToggleMode" 
+                 @onkeydown="HandleToggleKey">
+                >> CREATE A NEW LOGIN
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                Tip: Use Tab and Return keyboard buttons for the navigation.
+            </div>
+        }
+    </div>
+
+    <!-- FOCUS TRAP SENTINEL: Catches Tab at the end and loops back to top -->
+    <div tabindex="0" @onfocus="ResetFocus"></div>
+</div>

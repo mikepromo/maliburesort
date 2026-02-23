@@ -1,0 +1,85 @@
+﻿@inherits LayoutComponentBase
+@inject MalibuState State
+@using System.Reflection
+@using static Version
+
+<div class="main-container" style="height: 100vh; display: flex; flex-direction: column;">
+    <div class="screen">
+        @Body
+    </div>
+
+    <div class="output-line @State.OutputCssClass">
+        >> @State.LatestOutput
+    </div>
+
+    @if (State.IsLoggedIn)
+    {
+        <div class="bottom-bar">
+            <div class="cmd-line">
+                <span>/</span>
+                <input id="cmdInput"
+                       @bind="cmdText"
+                       @bind:event="oninput"
+                       @onkeyup="HandleKeyUp"
+                       placeholder="ENTER COMMAND"
+                       autocomplete="off"/>
+            </div>
+
+            <div class="stat-line">
+                <span style="color: var(--bb-white); font-weight: bold;">
+                    USER: <span class="text-amber">@(State.Player?.Name?.ToUpper() ?? "GUEST") &nbsp;|&nbsp; </span>
+                    BAL: <span class="text-green">USD @(State.Player?.Balance.ToString("N2") ?? "0.00")</span>
+            </span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bottom-bar">
+            <span>CVER @VersionOf(Assembly.GetExecutingAssembly()) | SVER @State.ServerVersion</span>
+        </div>
+    }
+
+</div>
+
+@code
+{
+    protected ElementReference cmdInput;
+    string cmdText = "";
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+        State.OnFocusCmdRequested += FocusCmd;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.LoadServerVersionAsync();
+    }
+
+    void FocusCmd()
+    {
+        cmdInput.FocusAsync();
+    }
+
+    void HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(cmdText))
+        {
+            State.DispatchCommand(cmdText);
+            cmdText = "";
+        }
+        else if (e.Key == "Escape")
+        {
+            cmdText = "";
+
+            //todo: drop focus
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
+}

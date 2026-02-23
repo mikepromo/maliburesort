@@ -1,0 +1,34 @@
+<!-- file: /home/fedq/work/sirius/maliburesort/client/Pages/Lobby.razor -->
+@page "/lobby"
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject MalibuState State
+@using shared
+@implements IDisposable
+
+<div class="lobby-wrapper" 
+     tabindex="0" 
+     @ref="lobbyContainer" 
+     @onkeydown="HandleContainerKey" 
+     style="outline: none;">
+
+    <h2>AVAILABLE TABLES</h2>
+    @if (tables == null)
+    {
+        <p>SCANNING NETWORK...</p>
+    }
+    else
+    {
+        @foreach (TableDto t in tables)
+        {
+            <div class="table-card" 
+                 tabindex="0" 
+                 @onclick="() => Join(t.Id)"
+                 @onkeydown:stopPropagation="true">
+                 
+                <div>@t.Name [TIER @t.Tier]</div>
+                <div style="font-size: 0.8rem">SEATS: @t.PlayerCount/@t.MaxSeats | MIN: $@t.MinBet</div>
+            </div>
+        }
+    }
+</div>

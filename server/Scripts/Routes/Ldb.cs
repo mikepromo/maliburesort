@@ -3,17 +3,17 @@ using shared;
 
 public static class Ldb
 {
-	public static async Task<IResult> GetLeaderboard(string id, MainDbContext db)
+	public static async Task<IResult> GetLeaderboard(string tableId, MainDbContext db)
 	{
 		const int DEFAULT_PAGINATION = 50;
 
 		DateTime oneHourAgo = DateTime.UtcNow.AddHours(-1);
 
-		List<LdbEntryDTO> leaderboard = await db.Bets
+		List<LdbEntryDto> leaderboard = await db.Bets
 			.Include(b => b.Player)
-			.Where(b => b.TableId == id && b.IsResolved && b.ResolvedAt >= oneHourAgo)
+			.Where(b => b.TableId == tableId && b.IsResolved && b.ResolvedAt >= oneHourAgo)
 			.GroupBy(b => new { b.PlayerId, b.Player.Name })
-			.Select(g => new LdbEntryDTO
+			.Select(g => new LdbEntryDto
 			{
 				PlayerId = g.Key.PlayerId,
 				PlayerName = g.Key.Name,

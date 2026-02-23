@@ -7,35 +7,38 @@ public static class Tables
 {
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
-		List<TableDto> tables = (await db.Tables.Include(t => t.Players).ToListAsync())
-			.Select(t => t.Wrap()).ToList();
+		List<TableDto> tables =
+			(await db.Tables
+				.Include(t => t.Players)
+				.ToListAsync())
+			.Select(t => t.Wrap())
+			.ToList();
 
 		return Results.Ok(tables);
 	}
 
-	public static async Task<IResult> GetTableState(string id, MainDbContext db)
+	public static async Task<IResult> GetTableState(string tableId, MainDbContext db)
 	{
 		GameStateDto? table = await db.Tables
 			.Include(t => t.Players)
 			.Include(t => t.Bets)
-			.Where(t => t.Id == id)
+			.Where(t => t.Id == tableId)
 			.Select(t => new GameStateDto
 			{
-				Id = t.Id,
-				Name = t.Name,
-				Tier = t.Tier,
-				NextSpinTime = t.NextSpinTime,
-				Players = t.Players.Select(p => new PlayerDTO { Id = p.Id, Name = p.Name, Balance = p.Balance })
-					.ToList(),
-				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => new BetDTO
+				table = new TableDto
 				{
-					Id = b.Id,
-					TableId = b.TableId,
-					PlayerId = b.PlayerId,
-					PlayerName = b.Player.Name,
-					ChosenNumber = b.ChosenNumber,
-					Amount = b.Amount
-				}).ToList()
+					Id = t.Id,
+					Name = t.Name,
+					Tier = t.Tier,
+					PlayerCount = t.Players.Count
+				},
+				spinResult = new SpinResultDto
+				{
+					NextSpinTime = t.NextSpinTime,
+					WinningNumber = t.LastWinningNumber
+				},
+				Players = t.Players.Select(p => p.Wrap()).ToList(),
+				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => b.Wrap()).ToList()
 			})
 			.FirstOrDefaultAsync();
 
@@ -45,12 +48,12 @@ public static class Tables
 		return Results.Ok(table);
 	}
 
-	public static async Task<IResult> JoinTable(string id, ClaimsPrincipal user, MainDbContext db,
+	public static async Task<IResult> JoinTable(string tableId, ClaimsPrincipal user, MainDbContext db,
 		IHubContext<GameHub> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
-			.FirstOrDefaultAsync(t => t.Id == id);
+			.FirstOrDefaultAsync(t => t.Id == tableId);
 
 		if (table == null)
 			return Results.NotFound("Table not found".Err());
@@ -73,17 +76,17 @@ public static class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id).SendAsync(RPC.PlayerJoined, player.Id);
+		await hub.Clients.Group(tableId).SendAsync(RPC.PlayerJoined, player.Wrap());
 
 		return Results.Ok(table.Wrap());
 	}
 
-	public static async Task<IResult> LeaveTable(string id, ClaimsPrincipal user, MainDbContext db,
+	public static async Task<IResult> LeaveTable(string tableId, ClaimsPrincipal user, MainDbContext db,
 		IHubContext<GameHub> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
-			.FirstOrDefaultAsync(t => t.Id == id);
+			.FirstOrDefaultAsync(t => t.Id == tableId);
 
 		if (table == null)
 			return Results.NotFound("Table not found".Err());
@@ -100,12 +103,12 @@ public static class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id).SendAsync(RPC.PlayerLeft, player.Id);
+		await hub.Clients.Group(tableId).SendAsync(RPC.PlayerLeft, player.Wrap());
 
 		return Results.Ok(table.Wrap());
 	}
 
-	public static async Task<IResult> PlaceBet(string id, ClaimsPrincipal user, PlaceBetRequest request,
+	public static async Task<IResult> PlaceBet(string tableId, ClaimsPrincipal user, PlaceBetRequest request,
 		MainDbContext db, IHubContext<GameHub> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
@@ -117,7 +120,7 @@ public static class Tables
 
 		Table? table = await db.Tables
 			.Include(t => t.Players)
-			.FirstOrDefaultAsync(t => t.Id == id);
+			.FirstOrDefaultAsync(t => t.Id == tableId);
 
 		if (table == null)
 			return Results.NotFound("Table not found".Err());
@@ -148,7 +151,7 @@ public static class Tables
 		{
 			Id = Guid.NewGuid().ToString(),
 			PlayerId = player.Id,
-			TableId = id,
+			TableId = tableId,
 			ChosenNumber = request.ChosenNumber,
 			Amount = request.Amount,
 			PlacedAt = DateTime.UtcNow,
@@ -160,9 +163,7 @@ public static class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id)
-			.SendAsync(RPC.BetPlaced, bet.Wrap());
-
+		await hub.Clients.Group(tableId).SendAsync(RPC.BetPlaced, bet.Wrap());
 		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
 
 		return Results.Ok(bet.Wrap());

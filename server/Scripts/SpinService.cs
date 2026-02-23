@@ -27,6 +27,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 	{
 		Table? table = await db.Tables.FindAsync(tableId);
 		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.Tier.SpinInterval_sec());
+		table!.LastWinningNumber = winningNumber; 
 
 		List<Bet> bets = await db.Bets
 			.Include(b => b.Player)
@@ -48,7 +49,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 
 		if (await db.TrySaveAsync() is not DbSaveResult.Success)
 			throw new Exception();
-		
+
 		foreach (Bet bet in bets)
 		{
 			if (bet.Payout > 0)
@@ -58,11 +59,13 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			}
 		}
 
-		await hub.Clients.Group(tableId).SendAsync(RPC.ReceiveSpin, new
+		SpinResultDto spinResult = new()
 		{
-			WinningNumber = winningNumber,
-			NextSpinTime = table.NextSpinTime
-		});
+			NextSpinTime = table.NextSpinTime,
+			WinningNumber = winningNumber
+		};
+
+		await hub.Clients.Group(tableId).SendAsync(RPC.ReceiveSpin, spinResult);
 	}
 }
 

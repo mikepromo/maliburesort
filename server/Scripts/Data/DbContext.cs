@@ -119,9 +119,9 @@ public class Player
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 	public uint Version { get; set; }
 
-	public PlayerDTO Wrap()
+	public PlayerDto Wrap()
 	{
-		return new PlayerDTO
+		return new PlayerDto
 		{
 			Id = Id,
 			Name = Name,
@@ -135,7 +135,8 @@ public class Table
 	public string Id { get; set; } = null!;
 	public string Name { get; set; } = null!;
 	public TableTier Tier { get; set; }
-	public DateTime NextSpinTime { get; set; }
+	public DateTime NextSpinTime { get; set; }    
+	public int? LastWinningNumber { get; set; } 
 
 	public List<Player> Players { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
@@ -171,14 +172,14 @@ public class Bet
 	public Player Player { get; set; } = null!;
 	public Table Table { get; set; } = null!;
 
-	public BetDTO Wrap()
+	public BetDto Wrap()
 	{
-		return new BetDTO
+		return new BetDto
 		{
 			Id = Id,
 			TableId = TableId,
 			PlayerId = PlayerId,
-			PlayerName = Player?.Name ?? "Unknown",
+			PlayerName = Player.Name,
 			ChosenNumber = ChosenNumber,
 			Amount = Amount
 		};
@@ -197,14 +198,14 @@ public class ChatMessage
 	public Player Player { get; set; } = null!;
 	public Table Table { get; set; } = null!;
 
-	public ChatMessageDTO Wrap()
+	public ChatMessageDto Wrap()
 	{
-		return new ChatMessageDTO
+		return new ChatMessageDto
 		{
 			Id = Id,
 			TableId = TableId,
 			PlayerId = PlayerId,
-			PlayerName = Player?.Name ?? "Unknown",
+			PlayerName = Player.Name,
 			Message = Message,
 			SentAt = SentAt
 		};

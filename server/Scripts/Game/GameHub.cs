@@ -37,7 +37,7 @@ public class GameHub(IServiceScopeFactory scopeFactory) : Hub
 				Player player = table.Players.First(p => p.Id == playerId);
 				table.Players.Remove(player);
 
-				await Clients.Group(table.Id).SendAsync(RPC.PlayerLeft, player.Name);
+				await Clients.Group(table.Id).SendAsync(RPC.PlayerLeft, player.Wrap());
 			}
 
 			if (tablesWithPlayer.Any())

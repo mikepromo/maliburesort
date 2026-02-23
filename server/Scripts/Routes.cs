@@ -39,18 +39,18 @@ public static class Routes
 
 		tablesGroup.MapGet("/", Tables.ListTables)
 			.RequireRateLimiting(NORMAL);
-		tablesGroup.MapGet("/{id}/state", Tables.GetTableState)
+		tablesGroup.MapGet("/{tableId}/state", Tables.GetTableState)
 			.RequireRateLimiting(NORMAL);
-		tablesGroup.MapPost("/{id}/join", Tables.JoinTable)
+		tablesGroup.MapPost("/{tableId}/join", Tables.JoinTable)
 			.RequireRateLimiting(NORMAL);
-		tablesGroup.MapPost("/{id}/leave", Tables.LeaveTable)
+		tablesGroup.MapPost("/{tableId}/leave", Tables.LeaveTable)
 			.RequireRateLimiting(NORMAL);
-		tablesGroup.MapPost("/{id}/bet", Tables.PlaceBet)
+		tablesGroup.MapPost("/{tableId}/bet", Tables.PlaceBet)
 			.RequireRateLimiting(BILLING);
-		tablesGroup.MapGet("/{id}/chat", Chat.GetChat)
+		tablesGroup.MapGet("/{tableId}/chat", Chat.GetChat)
 			.RequireRateLimiting(NORMAL);
-		tablesGroup.MapPost("/{id}/chat", Chat.SendInChat)
+		tablesGroup.MapPost("/{tableId}/chat", Chat.SendInChat)
 			.RequireRateLimiting(NORMAL);
-		tablesGroup.MapGet("/{id}/leaderboard", Ldb.GetLeaderboard)
+		tablesGroup.MapGet("/{tableId}/leaderboard", Ldb.GetLeaderboard)
 			.RequireRateLimiting(NORMAL); }
 }

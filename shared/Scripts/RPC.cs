@@ -9,4 +9,5 @@ public static class RPC
 	public const string PlayerLeft = nameof(PlayerLeft);
 	public const string PlayerJoined = nameof(PlayerJoined);
 	public const string SubscribeToTable = nameof(SubscribeToTable);
+	public const string UnsubscribeFromTable = nameof(UnsubscribeFromTable);
 }

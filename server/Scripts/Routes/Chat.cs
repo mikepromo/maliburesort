@@ -14,14 +14,7 @@ public static class Chat
 			.Where(cm => cm.TableId == id)
 			.OrderByDescending(cm => cm.SentAt)
 			.Take(count.Value)
-			.Select(cm => new ChatMessageDTO
-			{
-				Id = cm.Id,
-				PlayerId = cm.Player.Id,
-				PlayerName = cm.Player.Name,
-				Message = cm.Message,
-				SentAt = cm.SentAt
-			})
+			.Select(cm => cm.Wrap())
 			.ToListAsync();
 
 		return Results.Ok(messages);
@@ -35,14 +28,14 @@ public static class Chat
 			.FirstOrDefaultAsync(t => t.Id == id);
 
 		if (table == null)
-			return Results.NotFound("Table not found");
+			return Results.NotFound("Table not found".Err());
 
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		Player? player = table.Players.FirstOrDefault(p => p.Id == playerId);
 		if (player == null)
-			return Results.BadRequest("You must join the table first");
+			return Results.BadRequest("You must join the table first".Err());
 
 		ChatMessage cm = new()
 		{
@@ -58,16 +51,9 @@ public static class Chat
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(id).SendAsync(RPC.ReceiveChat,
-			new ChatMessageDTO
-			{
-				Id = cm.Id,
-				PlayerId = player.Id,
-				PlayerName = player.Name,
-				Message = cm.Message,
-				SentAt = cm.SentAt
-			});
+		ChatMessageDTO dto = cm.Wrap();
+		await hub.Clients.Group(id).SendAsync(RPC.ReceiveChat, dto);
 
-		return Results.Ok();
+		return Results.Ok(dto);
 	}
 }

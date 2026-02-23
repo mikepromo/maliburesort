@@ -7,10 +7,11 @@ public static class Wallet
 	public static async Task<IResult> Balance(ClaimsPrincipal user, MainDbContext db)
 	{
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		Player? player = await db.Players.FindAsync(playerId);
-		if (player is null) return Results.NotFound();
+		if (player is null) 
+			return Results.NotFound("Player not found".Err());
 		decimal balance = player.Balance;
 
 		return Results.Ok(new WalletTransaction(balance));
@@ -20,11 +21,11 @@ public static class Wallet
 		IHubContext<GameHub> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		Player? player = await db.Players.FindAsync(playerId);
 		if (player is null)
-			return Results.NotFound();
+			return Results.NotFound("Player not found".Err());
 
 		decimal amount = request.Amount;
 
@@ -52,11 +53,10 @@ public static class Wallet
 
 		string? withdrawalError = Validation.IsValidWithdrawal(amount);
 		if (withdrawalError != null)
-			return Results.BadRequest(new { Message = withdrawalError });
+			return Results.BadRequest(withdrawalError.Err());
 
 		if (amount > player.Balance)
-			return Results.BadRequest(new
-				{ Message = $"Insufficient funds" });
+			return Results.BadRequest("Insufficient funds".Err());
 
 		player.Balance -= amount;
 

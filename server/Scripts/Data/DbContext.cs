@@ -43,9 +43,9 @@ public class MainDbContext : DbContext
 		if (saveResult is DbSaveResult.Success) return null;
 		return saveResult switch
 		{
-			DbSaveResult.ConcurrencyConflict => Results.Conflict("Please try again."),
-			DbSaveResult.DbError             => Results.UnprocessableEntity("Database constraint violation"),
-			DbSaveResult.Fatal               => Results.InternalServerError(),
+			DbSaveResult.ConcurrencyConflict => Results.Conflict("Please try again.".Err()),
+			DbSaveResult.DbError             => Results.UnprocessableEntity("Database constraint violation".Err()),
+			DbSaveResult.Fatal               => Results.InternalServerError("Unhandled db error".Err()),
 			_                                => throw new ArgumentOutOfRangeException()
 		};
 	}
@@ -119,7 +119,7 @@ public class Player
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 	public uint Version { get; set; }
 
-	public PlayerDTO GetDTO()
+	public PlayerDTO Wrap()
 	{
 		return new PlayerDTO
 		{
@@ -140,6 +140,17 @@ public class Table
 	public List<Player> Players { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
 	public List<Bet> Bets { get; set; } = new();
+
+	public TableDto Wrap()
+	{
+		return new TableDto
+		{
+			Id = Id,
+			Name = Name,
+			Tier = Tier,
+			PlayerCount = Players.Count
+		};
+	}
 }
 
 public class Bet
@@ -159,6 +170,19 @@ public class Bet
 
 	public Player Player { get; set; } = null!;
 	public Table Table { get; set; } = null!;
+
+	public BetDTO Wrap()
+	{
+		return new BetDTO
+		{
+			Id = Id,
+			TableId = TableId,
+			PlayerId = PlayerId,
+			PlayerName = Player?.Name,
+			ChosenNumber = ChosenNumber,
+			Amount = Amount
+		};
+	}
 }
 
 public class ChatMessage
@@ -172,4 +196,17 @@ public class ChatMessage
 
 	public Player Player { get; set; } = null!;
 	public Table Table { get; set; } = null!;
+
+	public ChatMessageDTO Wrap()
+	{
+		return new ChatMessageDTO
+		{
+			Id = Id,
+			TableId = TableId,
+			PlayerId = PlayerId,
+			PlayerName = Player?.Name,
+			Message = Message,
+			SentAt = SentAt
+		};
+	}
 }

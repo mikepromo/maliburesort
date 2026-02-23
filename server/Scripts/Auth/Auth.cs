@@ -11,17 +11,17 @@ public static partial class Auth
 	{
 		string? nameError = Validation.IsValidName(request.Name);
 		if (nameError != null)
-			return Results.Conflict(nameError);
+			return Results.Conflict(nameError.Err());
 
 		string? passError = Validation.IsValidPass(request.Name);
 		if (passError != null)
-			return Results.Conflict(passError);
+			return Results.Conflict(passError.Err());
 
 		string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Pass);
 		string nameNormalised = request.Name.ToLowerInvariant();
 
 		if (await db.Players.AnyAsync(p => p.NameNormalized == nameNormalised))
-			return Results.Conflict("Name already taken.");
+			return Results.Conflict("Name already taken.".Err());
 
 		Player player = new()
 		{
@@ -38,7 +38,7 @@ public static partial class Auth
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		return Results.Ok(player.GetDTO());
+		return Results.Ok(player.Wrap());
 	}
 
 	public static async Task<IResult> Login(PlayerCredentials request, MainDbContext db, HttpContext context,
@@ -50,11 +50,11 @@ public static partial class Auth
 			.FirstOrDefaultAsync(p => p.NameNormalized == normalized);
 
 		if (player == null)
-			return Results.NotFound();
+			return Results.NotFound("Player not found".Err());
 
 		//; verify password
 		if (!BCrypt.Net.BCrypt.Verify(request.Pass, player.PasswordHash))
-			return Results.Unauthorized();
+			return Results.Conflict("Wrong password".Err());
 
 		//; generate JWT
 		string? key = config["Jwt:Key"];
@@ -79,7 +79,7 @@ public static partial class Auth
 			Expires = player.RefreshTokenExpiry
 		});
 	
-		return Results.Ok(new JWTResponse(jwt, player.GetDTO()));
+		return Results.Ok(new JWTResponse(jwt, player.Wrap()));
 	}
 
 	public static async Task<IResult> Refresh(HttpContext context, MainDbContext db,
@@ -98,17 +98,17 @@ public static partial class Auth
 		if (key is null || !GenerateJWT(player, key, out string jwt))
 			return Results.InternalServerError();
 
-		return Results.Ok(new JWTResponse(jwt, player.GetDTO()));
+		return Results.Ok(new JWTResponse(jwt, player.Wrap()));
 	}
 
 	public static async Task<IResult> Logout(ClaimsPrincipal user, MainDbContext db, HttpContext context)
 	{
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		Player? player = await db.Players.FindAsync(playerId);
 		if (player is null)
-			return Results.NotFound();
+			return Results.NotFound("Player not found".Err());
 
 		player.JWTVersion = Guid.NewGuid().ToString();
 		player.RefreshToken = null;

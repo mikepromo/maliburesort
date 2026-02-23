@@ -8,24 +8,18 @@ public static class Tables
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
 		List<TableDto> tables = (await db.Tables.Include(t => t.Players).ToListAsync())
-			.Select(t => new TableDto
-			{
-				Id = t.Id,
-				Name = t.Name,
-				Tier = t.Tier,
-				PlayerCount = t.Players.Count
-			}).ToList();
+			.Select(t => t.Wrap()).ToList();
 
 		return Results.Ok(tables);
 	}
 
 	public static async Task<IResult> GetTableState(string id, MainDbContext db)
 	{
-		TableStateDto? table = await db.Tables
+		GameStateDto? table = await db.Tables
 			.Include(t => t.Players)
 			.Include(t => t.Bets)
 			.Where(t => t.Id == id)
-			.Select(t => new TableStateDto
+			.Select(t => new GameStateDto
 			{
 				Id = t.Id,
 				Name = t.Name,
@@ -43,7 +37,8 @@ public static class Tables
 			})
 			.FirstOrDefaultAsync();
 
-		if (table == null) return Results.NotFound("Table not found");
+		if (table == null)
+			return Results.NotFound("Table not found".Err());
 
 		return Results.Ok(table);
 	}
@@ -56,20 +51,20 @@ public static class Tables
 			.FirstOrDefaultAsync(t => t.Id == id);
 
 		if (table == null)
-			return Results.NotFound("Table not found");
+			return Results.NotFound("Table not found".Err());
 
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		Player? player = await db.Players.FindAsync(playerId);
 		if (player == null)
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		if (table.Players.Any(p => p.Id == playerId))
-			return Results.Conflict("Player already at this table");
+			return Results.Conflict("Player already at this table".Err());
 
 		if (table.Players.Count >= table.Tier.MaxSeats())
-			return Results.BadRequest("Table is full");
+			return Results.BadRequest("Table is full".Err());
 
 		table.Players.Add(player);
 
@@ -78,7 +73,7 @@ public static class Tables
 
 		await hub.Clients.Group(id).SendAsync(RPC.PlayerJoined, player.Id);
 
-		return Results.Ok();
+		return Results.Ok(table.Wrap());
 	}
 
 	public static async Task<IResult> LeaveTable(string id, ClaimsPrincipal user, MainDbContext db,
@@ -89,14 +84,14 @@ public static class Tables
 			.FirstOrDefaultAsync(t => t.Id == id);
 
 		if (table == null)
-			return Results.NotFound("Table not found");
+			return Results.NotFound("Table not found".Err());
 
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
 		Player? player = table.Players.FirstOrDefault(p => p.Id == playerId);
 		if (player == null)
-			return Results.NotFound("Player not at this table");
+			return Results.NotFound("Player not at this table".Err());
 
 		table.Players.Remove(player);
 
@@ -105,44 +100,45 @@ public static class Tables
 
 		await hub.Clients.Group(id).SendAsync(RPC.PlayerLeft, player.Id);
 
-		return Results.Ok();
+		return Results.Ok(table.Wrap());
 	}
 
 	public static async Task<IResult> PlaceBet(string id, ClaimsPrincipal user, PlaceBetRequest request,
 		MainDbContext db, IHubContext<GameHub> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
-			return Results.NotFound("Player not found");
+			return Results.NotFound("Player not found".Err());
 
-		Player? player = await user.GetPlayerSecure(db); // Secure DB verification
-		if (player == null) return Results.Unauthorized();
+		Player? player = await user.GetPlayerSecure(db);
+		if (player == null) 
+			return Results.Unauthorized();
 
 		Table? table = await db.Tables
 			.Include(t => t.Players)
 			.FirstOrDefaultAsync(t => t.Id == id);
 
 		if (table == null)
-			return Results.NotFound("Table not found");
+			return Results.NotFound("Table not found".Err());
 
 		if (!table.Players.Any(p => p.Id == playerId))
-			return Results.BadRequest("You must join the table first");
+			return Results.BadRequest("You must join the table first".Err());
 
 		if (request.Amount < table.Tier.MinBet() ||
 		    request.Amount > table.Tier.MaxBet())
-			return Results.BadRequest($"Bet must be between {table.Tier.MinBet()} and {table.Tier.MaxBet()}");
+			return Results.BadRequest($"Bet must be between {table.Tier.MinBet()} and {table.Tier.MaxBet()}".Err());
 
 		if (request.ChosenNumber < 0 || request.ChosenNumber > 36)
-			return Results.BadRequest("Number must be between 0 and 36");
+			return Results.BadRequest("Number must be between 0 and 36".Err());
 
 		if (request.Amount <= 0)
-			return Results.BadRequest("Bet amount must be positive");
+			return Results.BadRequest("Bet amount must be positive".Err());
 
 		if (player.Balance < request.Amount)
-			return Results.BadRequest("Insufficient funds");
+			return Results.BadRequest("Insufficient funds".Err());
 
 		double timeUntilSpin = (table.NextSpinTime - DateTime.UtcNow).TotalSeconds;
 		if (timeUntilSpin < 2)
-			return Results.BadRequest("Too close to next spin, wait a moment");
+			return Results.BadRequest("Too close to next spin, wait a moment".Err());
 
 		player.Balance -= request.Amount;
 
@@ -167,6 +163,6 @@ public static class Tables
 
 		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
 
-		return Results.Ok();
+		return Results.Ok(bet.Wrap());
 	}
 }

@@ -9,27 +9,12 @@ public enum OutputType
 	ServerError
 }
 
-partial class MalibuState
+partial class AppState
 {
-	public event Func<string, string[], Task>? OnCliInput;
 	public string LatestOutput { get; private set; } = "SYSTEM READY";
 	public OutputType OutputType { get; private set; }
 
-	public event Action? OnFocusCliRequested;
-
-	public void RequestCliFocus()
-	{
-		OnFocusCliRequested?.Invoke();
-	}
-
-	public string OutputCssClass => OutputType switch
-	{
-		OutputType.ClientInfo      => "text-green",
-		OutputType.ClientError     => "text-amber",
-		OutputType.ServerError     => "text-red",
-		OutputType.ClientException => "text-blue",
-		_                          => "text-amber"
-	};
+	public event Func<string, string[], Task>? OnCliInput;
 
 	public async Task DispatchCommand(string cliText)
 	{
@@ -42,29 +27,61 @@ partial class MalibuState
 
 		switch (cmd)
 		{
-			case "LOBBY":
-			case "HOME":
-			case "EXIT":
-				_nav.NavigateTo("/lobby");
-				break;
 			case "LOGOUT":
-				Jwt = null;
-				Player = null;
-				_nav.NavigateTo("/");
+			case "SD":
+				await Logout();
 				break;
 			case "RELOAD":
 			case "REFRESH":
-				_nav.NavigateTo(_nav.Uri, true);
+				nav.NavigateTo(nav.Uri, true);
+				break;
+			case "BET":
+			case "B":
+				if (args.Length == 2)
+				{
+					if (int.TryParse(args[0], out int nmb) && decimal.TryParse(args[1], out decimal amt))
+					{
+						await PlaceBet(nmb, amt);
+					}
+				}
+				else
+				{
+					Cerr("INVALID BET ARGS. USAGE: BET <0-36> <AMT>");
+				}
 				break;
 			case "DEPOSIT":
-				;
+			case "DP":
+				if (args.Length == 1)
+				{
+					if (decimal.TryParse(args[0], out decimal amt))
+					{
+						await Deposit(amt);
+					}
+				}
+				else
+				{
+					Cerr("INVALID DEPOSIT ARGS. USAGE: DEPOSIT <AMT>");
+				}
 				break;
 			case "WITHDRAW":
-				;
+			case "WD":
+				if (args.Length == 1)
+				{
+					if (decimal.TryParse(args[0], out decimal amt))
+					{
+						await Withdraw(amt);
+					}
+				}
+				else
+				{
+					Cerr("INVALID WITHDRAW ARGS. USAGE: WITHDRAW <AMT>");
+				}
 				break;
 			case "BALANCE":
-				;
+			case "BAL":
+				await CheckBalance();
 				break;
+			
 			default:
 				if (OnCliInput != null)
 					await OnCliInput.Invoke(cmd, args);
@@ -115,6 +132,6 @@ partial class MalibuState
 	{
 		LatestOutput = message.ToUpper();
 		OutputType = type;
-		Notify();
+		Dirty();
 	}
 }

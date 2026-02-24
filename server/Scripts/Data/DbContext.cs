@@ -92,11 +92,11 @@ public class MainDbContext : DbContext
 		}
 	}
 
-	static Table ArrangeTable(string title, TableTier tier, int shift_sec)
+	static Table ArrangeTable( string title, TableTier tier, int shift_sec)
 	{
 		return new Table
 		{
-			Id = Guid.NewGuid().ToString(), Name = title, Tier = tier,
+			Id = Guid.NewGuid().ToString(),  Name = title, Tier = tier,
 			NextSpinTime = DateTime.UtcNow.AddSeconds(shift_sec)
 		};
 	}
@@ -112,7 +112,7 @@ public class Player
 	public string JWTVersion { get; set; } = null!;
 	public string? RefreshToken { get; set; }
 	public DateTime RefreshTokenExpiry { get; set; }
-	
+
 	public DateTime LastActiveAt { get; set; }
 	public string? CurrentTableId { get; set; }
 	public Table? CurrentTable { get; set; }
@@ -140,8 +140,8 @@ public class Table
 	public string Id { get; set; } = null!;
 	public string Name { get; set; } = null!;
 	public TableTier Tier { get; set; }
-	public DateTime NextSpinTime { get; set; }    
-	public int? LastWinningNumber { get; set; } 
+	public DateTime NextSpinTime { get; set; }
+	public int? LastWinningNumber { get; set; }
 
 	public List<Player> Players { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();

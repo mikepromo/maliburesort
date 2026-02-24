@@ -28,7 +28,7 @@ public class Program
 				});
 		}
 
-		builder.Services.AddScoped<MalibuState>();
+		builder.Services.AddScoped<AppState>();
 
 		await builder.Build().RunAsync();
 	}

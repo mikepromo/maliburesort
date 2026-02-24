@@ -3,10 +3,10 @@ using shared;
 
 public static class Ldb
 {
+	const int DEFAULT_PAGINATION = 50;
+
 	public static async Task<IResult> GetLeaderboard(string tableId, MainDbContext db)
 	{
-		const int DEFAULT_PAGINATION = 50;
-
 		DateTime oneHourAgo = DateTime.UtcNow.AddHours(-1);
 
 		List<LdbEntryDto> leaderboard = await db.Bets

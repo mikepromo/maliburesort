@@ -143,6 +143,10 @@ public class Program
 			using (IServiceScope scope = app.Services.CreateScope())
 			{
 				MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
+
+				// if (app.Environment.IsDevelopment())
+				// 	await db.Database.EnsureDeletedAsync();
+
 				await db.Database.MigrateAsync();
 
 				await db.SeedTables();

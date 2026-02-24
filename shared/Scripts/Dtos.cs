@@ -1,6 +1,5 @@
 ﻿namespace shared;
 
-//; HTTP section
 public static class DtoExtensions
 {
 	public static ErrorResponse Err(this string str, string? code = null)
@@ -72,7 +71,6 @@ public class GameStateDto
 	public List<BetDto> Bets { get; set; } = new();
 }
 
-//; RPC section
 public class SpinResultDto
 {
 	public int? WinningNumber { get; set; }

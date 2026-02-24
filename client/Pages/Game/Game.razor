@@ -1,6 +1,6 @@
 @page "/game/{TableId}"
 @inject HttpClient Http
-@inject MalibuState State
+@inject AppState AppState
 
 <div class="game-layout">
     <div class="main-column">
@@ -16,5 +16,5 @@
 @code
 {
     [Parameter]
-    public string TableId { get; set; }
+    public required string TableId { get; set; }
 }

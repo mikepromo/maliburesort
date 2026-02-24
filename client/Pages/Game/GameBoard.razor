@@ -1,37 +1,40 @@
 @inject HttpClient Http
-@inject MalibuState State
+@inject AppState AppState
 @using shared
 @implements IDisposable
 
-<div class="terminal-board">
-    <div class="board-header">
-        <div class="status-item">
-            <span class="lbl">TABLE:</span>
-            <span class="val">@(gameState?.table.Name.ToUpper() ?? "CONNECTING...")</span>
+<div class="board-container">
+    <!-- TOP STATUS LINE -->
+    <div class="board-status">
+        <div class="status-group">
+            <span class="label">TABLE:</span>
+            <span class="value">@(gameState?.table.Name.ToUpper() ?? "CONNECTING...")</span>
+            <span class="tag">@gameState?.table.Tier</span>
         </div>
-        <div class="status-item">
-            <span class="lbl">LAST:</span>
-            <span class="val text-amber">@(gameState?.spinResult.WinningNumber?.ToString() ?? "--")</span>
+
+        <div class="status-group">
+            <span class="label">LAST RESULT:</span>
+            <span class="value text-amber">@(gameState?.spinResult.WinningNumber?.ToString() ?? "--")</span>
         </div>
-        <div class="status-item">
-            <span class="lbl">T-MINUS:</span>
-            <span class="val @(GetTimerColor())">@GetTimeLeft()S</span>
+
+        <div class="status-group">
+            <span class="label">T-MINUS:</span>
+            <span class="value @(_timeLeft < 5 ? "text-red blink" : "text-green")">@(_timeLeft)S</span>
         </div>
     </div>
 
-    <!-- GRID: 0 + 1-36 -->
-    <div class="roulette-container">
-        <div class="cell n-0 @(IsWinner(0))" @onclick="() => PlaceBet(0, 100)">
-            0 @RenderBet(0)
+    <!-- ROULETTE GRID -->
+    <div class="roulette-layout">
+        <div class="cell n-0 @GetWinningClass(0)">
+            0 @RenderChips(0)
         </div>
-        
         <div class="numbers-grid">
             @for (int i = 1; i <= 36; i++)
             {
                 int n = i;
-                <div class="cell @(IsWinner(n))" @onclick="() => PlaceBet(n, 100)">
+                <div class="cell @GetWinningClass(n)">
                     @n
-                    @RenderBet(n)
+                    @RenderChips(n)
                 </div>
             }
         </div>
@@ -40,72 +43,62 @@
 
 @code
 {
-    [Parameter] public required string TableId { get; set; }
+    [Parameter]
+    public required string TableId { get; set; }
+
     GameStateDto? gameState;
-    bool _isTicking = true;
+    int _timeLeft;
+    Timer? _timer;
 
     protected override async Task OnInitializedAsync()
     {
-        State.OnCliInput += HandleCliInput;
-        State.OnSpinResulted += HandleSpin;
-
-        await Http.PostAsJsonAsync($"/tables/{TableId}/join", new { });
-        await State.Hub.InvokeAsync(ServerRPC.SubscribeToTable, TableId);
+        AppState.OnSpinResulted += HandleSpin;
+        AppState.OnBetPlaced += HandleRemoteBet;
 
         gameState = await Http.GetFromJsonAsync<GameStateDto>($"/tables/{TableId}/state");
-
-        // Minimal loop to refresh UI every second for the countdown
-        _ = Task.Run(async () => {
-            while (_isTicking) {
-                await InvokeAsync(StateHasChanged);
-                await Task.Delay(1000);
-            }
-        });
+        StartCountdown();
     }
 
-    string GetTimeLeft() {
-        if (gameState == null) return "0";
-        var diff = (gameState.spinResult.NextSpinTime - DateTime.UtcNow).TotalSeconds;
-        return diff > 0 ? ((int)diff).ToString() : "0";
-    }
-
-    string GetTimerColor() {
-        int.TryParse(GetTimeLeft(), out int sec);
-        return sec < 5 ? "text-red" : "text-green";
-    }
-
-    string IsWinner(int n) => gameState?.spinResult.WinningNumber == n ? "winner" : "";
-
-    RenderFragment RenderBet(int n) => __builder => {
-        var myBet = gameState?.Bets
-            .Where(b => b.ChosenNumber == n && b.PlayerId == State.Player?.Id)
+    RenderFragment RenderChips(int number) => __builder =>
+    {
+        decimal total = gameState?.Bets
+            .Where(b => b.ChosenNumber == number && b.PlayerId == AppState.Player?.Id)
             .Sum(b => b.Amount) ?? 0;
-            
-        if (myBet > 0) {
-            <div class="chip">@myBet.ToString("N0")</div>
+
+        if (total > 0)
+        {
+            <div class="chip">@total.ToString("N0")</div>
         }
     };
 
-    async Task HandleCliInput(string cmd, string[] args)
+    string GetWinningClass(int n) =>
+        gameState?.spinResult.WinningNumber == n ? "winner-highlight" : "";
+
+    private void StartCountdown()
     {
-        if ((cmd == "BET" || cmd == "B") && args.Length == 2)
+        _timer?.Dispose();
+        _timer = new Timer(_ =>
         {
-            if (int.TryParse(args[0], out int nmb) && decimal.TryParse(args[1], out decimal amt))
-            {
-                await PlaceBet(nmb, amt);
-            }
-        }
+            if (gameState == null) return;
+            double diff = (gameState.spinResult.NextSpinTime - DateTime.UtcNow).TotalSeconds;
+            _timeLeft = diff > 0 ? (int)diff : 0;
+            InvokeAsync(StateHasChanged);
+        }, null, 0, 1000);
     }
 
-    async Task PlaceBet(int n, decimal amt)
+    private void HandleRemoteBet(BetDto bet)
     {
-        var res = await Http.PostAsJsonAsync($"/tables/{TableId}/bet", new PlaceBetRequest(n, amt));
-        if (!res.IsSuccessStatusCode) await State.Chttp(res);
+        if (gameState != null && !gameState.Bets.Any(b => b.Id == bet.Id))
+        {
+            gameState.Bets.Add(bet);
+            InvokeAsync(StateHasChanged);
+        }
     }
 
     private void HandleSpin(SpinResultDto dto)
     {
-        if (gameState != null) {
+        if (gameState != null)
+        {
             gameState.spinResult = dto;
             gameState.Bets.Clear();
         }
@@ -114,8 +107,8 @@
 
     public void Dispose()
     {
-        _isTicking = false;
-        State.OnCliInput -= HandleCliInput;
-        State.OnSpinResulted -= HandleSpin;
+        _timer?.Dispose();
+        AppState.OnSpinResulted -= HandleSpin;
+        AppState.OnBetPlaced -= HandleRemoteBet;
     }
 }

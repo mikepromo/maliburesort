@@ -1,6 +1,6 @@
 @page "/"
 @using shared
-@inject MalibuState State
+@inject AppState AppState
 
 <div class="login-container">
     <div class="login-title">Malibu Resort</div>
@@ -98,21 +98,21 @@
     {
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(pass))
         {
-            State.Cerr("INPUT REQUIRED");
+            AppState.Cerr("INPUT REQUIRED");
             return;
         }
 
         string? nameError = Validation.IsValidName(name);
         if (nameError != null)
         {
-            State.Cerr(nameError);
+            AppState.Cerr(nameError);
             return;
         }
 
         string? passError = Validation.IsValidPass(pass);
         if (passError != null)
         {
-            State.Cerr(passError);
+            AppState.Cerr(passError);
             return;
         }
 
@@ -120,16 +120,16 @@
         {
             if (pass != passConfirm)
             {
-                State.Cerr("PASSWORD MISMATCH");
+                AppState.Cerr("PASSWORD MISMATCH");
                 return;
             }
 
-            if (await State.Register(name, pass))
+            if (await AppState.Register(name, pass))
                 ToggleMode();
         }
         else
         {
-            await State.Login(name, pass);
+            await AppState.Login(name, pass);
         }
     }
 

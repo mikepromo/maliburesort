@@ -1,7 +1,7 @@
 @page "/lobby"
 @inject HttpClient Http
 @inject NavigationManager Nav
-@inject MalibuState State
+@inject AppState AppState
 @using shared
 @implements IDisposable
 
@@ -20,7 +20,6 @@
         {
             <div class="table-card"
                  tabindex="0"
-                 @onclick="() => Join(t.Id)"
                  @onkeydown:stopPropagation="true">
 
                 <div>@t.Name [TIER @t.Tier]</div>
@@ -36,37 +35,44 @@
 
     protected override async Task OnInitializedAsync()
     {
-        State.OnCliInput += HandleCliInput;
-        tables = await Http.GetFromJsonAsync<List<TableDto>>("/tables");
+        AppState.OnCliInput += HandleCliInput;
+        List<TableDto>? _tables = await Http.GetFromJsonAsync<List<TableDto>>("/tables");
+        tables = _tables ?? new List<TableDto>();
     }
 
     async Task HandleCliInput(string cmd, string[] args)
     {
-        if (cmd == "JOIN" && args.Length > 0 && tables != null)
+        switch (cmd)
         {
-            TableDto? table = null;
-            string target = args[0];
+            case "JOIN":
+                if (tables != null && args.Length == 1)
+                {
+                    TableDto? table = null;
+                    string target = args[0];
 
-            if (int.TryParse(target, out int index) &&
-                index > 0 && index <= tables.Count)
-            {
-                table = tables[index - 1];
-            }
+                    if (int.TryParse(target, out int index) &&
+                        index > 0 && index <= tables.Count)
+                    {
+                        table = tables[index - 1];
+                    }
 
-            if (table != null)
-            {
-                Join(table.Id);
-            }
+                    if (table != null)
+                    {
+                        await AppState.JoinTable(table.Id);
+                    }
+                }
+                break;
+            case "LOBBY":
+            case "HOME":
+            case "EXIT":
+            case "Q":
+                await AppState.LeaveTable();
+                break;
         }
-    }
-
-    void Join(string id)
-    {
-        Nav.NavigateTo($"/game/{id}");
     }
 
     public void Dispose()
     {
-        State.OnCliInput -= HandleCliInput;
+        AppState.OnCliInput -= HandleCliInput;
     }
 }

@@ -1,6 +1,6 @@
-@inject HttpClient Http
-@inject MalibuState State
 @using shared
+@inject AppState AppState
+@inject HttpClient Http
 @implements IDisposable
 
 <div class="terminal-ldb">
@@ -17,7 +17,7 @@
         </tr>
         </thead>
         <tbody>
-        @if (_ldb.Count == 0)
+        @if (ldb == null || ldb.Count == 0)
         {
             <tr>
                 <td colspan="2" style="color: #444; text-align: center; padding: 20px;">
@@ -25,17 +25,20 @@
                 </td>
             </tr>
         }
-        @foreach (LdbEntryDto entry in _ldb)
+        else
         {
-            bool isSelf = entry.PlayerId == State.Player?.Id;
-            <tr class="@(isSelf ? "self-row" : "")">
-                <td class="@(isSelf ? "text-amber" : "")">
-                    @(isSelf ? "> " : "")@entry.PlayerName.ToUpper()
-                </td>
-                <td class="text-right @(entry.NetProfit >= 0 ? "text-green" : "text-red")">
-                    @(entry.NetProfit > 0 ? "+" : "")@entry.NetProfit.ToString("N2")
-                </td>
-            </tr>
+            @foreach (LdbEntryDto entry in ldb)
+            {
+                bool isSelf = entry.PlayerId == AppState.Player?.Id;
+                <tr class="@(isSelf ? "self-row" : "")">
+                    <td class="@(isSelf ? "text-amber" : "")">
+                        @(isSelf ? "> " : "")@entry.PlayerName.ToUpper()
+                    </td>
+                    <td class="text-right @(entry.NetProfit >= 0 ? "text-green" : "text-red")">
+                        @(entry.NetProfit > 0 ? "+" : "")@entry.NetProfit.ToString("N2")
+                    </td>
+                </tr>
+            }
         }
         </tbody>
     </table>
@@ -46,43 +49,22 @@
     [Parameter]
     public required string TableId { get; set; }
 
-    List<LdbEntryDto> _ldb = new();
-    bool _isDisposed = false;
+    List<LdbEntryDto>? ldb;
 
     protected override async Task OnInitializedAsync()
     {
-        State.OnSpinResulted += HandleSpinResult;
-        await LoadData();
+        AppState.OnLdbUpdated += HandleLdbUpdate;
     }
 
-    async void HandleSpinResult(SpinResultDto _)
+    async void HandleLdbUpdate()
     {
-        await LoadData();
-    }
-
-    async Task LoadData()
-    {
-        if (_isDisposed) return;
-
-        try
-        {
-            List<LdbEntryDto>? data = await Http.GetFromJsonAsync<List<LdbEntryDto>>($"/tables/{TableId}/leaderboard");
-
-            if (!_isDisposed)
-            {
-                _ldb = data ?? new List<LdbEntryDto>();
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex)
-        {
-            State.Cerr($"LDB SYNC FAILURE: {ex.Message}");
-        }
+        List<LdbEntryDto>? _ldb = await Http.GetFromJsonAsync<List<LdbEntryDto>>($"/tables/{TableId}/leaderboard");
+        ldb = _ldb ?? new List<LdbEntryDto>();
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        _isDisposed = true;
-        State.OnSpinResulted -= HandleSpinResult;
+        AppState.OnLdbUpdated -= HandleLdbUpdate;
     }
 }

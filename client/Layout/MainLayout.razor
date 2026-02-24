@@ -1,5 +1,5 @@
 ﻿@inherits LayoutComponentBase
-@inject MalibuState State
+@inject AppState AppState
 @using System.Reflection
 @using static Version
 
@@ -8,11 +8,11 @@
         @Body
     </div>
 
-    <div class="output-line @State.OutputCssClass">
-        >> @State.LatestOutput
+    <div class="output-line @OutputCssClass">
+        >> @AppState.LatestOutput
     </div>
 
-    @if (State.IsLoggedIn)
+    @if (AppState.IsLoggedIn)
     {
         <div class="bottom-bar">
             <div class="cmd-line">
@@ -27,8 +27,8 @@
     
             <div class="stat-line">
                 <span style="color: var(--bb-white); font-weight: bold;">
-                    USER: <span class="text-amber">@(State.Player?.Name?.ToUpper() ?? "GUEST") &nbsp;|&nbsp; </span>
-                    BAL: <span class="text-green">USD @(State.Player?.Balance.ToString("N2") ?? "0.00")</span>
+                    USER: <span class="text-amber">@(AppState.Player?.Name?.ToUpper() ?? "GUEST") &nbsp;|&nbsp; </span>
+                    BAL: <span class="text-green">USD @(AppState.Player?.Balance.ToString("N2") ?? "0.00")</span>
                 </span>
             </div>
         </div>
@@ -36,7 +36,7 @@
     else
     {
         <div class="bottom-bar">
-            <span>CVER @VersionOf(Assembly.GetExecutingAssembly()) | SVER @State.ServerVersion</span>
+            <span>CVER @VersionOf(Assembly.GetExecutingAssembly()) | SVER @AppState.ServerVersion</span>
         </div>
     }
 
@@ -49,9 +49,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        State.OnChange += StateHasChanged;
-        State.OnFocusCliRequested += FocusCli;
-        await State.LoadServerVersionAsync();
+        AppState.OnChange += StateHasChanged;
+        OnFocusCliRequested += FocusCli;
+        await AppState.GetServerVersion();
     }
 
     void FocusCli()
@@ -63,21 +63,38 @@
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(cliText))
         {
-            await State.DispatchCommand(cliText);
+            await AppState.DispatchCommand(cliText);
             cliText = "";
         }
-        else if (e.Key == "Enter")
+        if (e.Key == "Enter")
         {
-            State.RequestCliFocus();
+            RequestCliFocus();
         }
-        else if (e.Key == "Escape")
+        
+        if (e.Key == "Escape")
         {
             cliText = "";
         }
     }
 
+    public event Action? OnFocusCliRequested;
+
+    public void RequestCliFocus()
+    {
+        OnFocusCliRequested?.Invoke();
+    }
+
+    public string OutputCssClass => AppState.OutputType switch
+    {
+        OutputType.ClientInfo      => "text-green",
+        OutputType.ClientError     => "text-amber",
+        OutputType.ServerError     => "text-red",
+        OutputType.ClientException => "text-blue",
+        _                          => "text-amber"
+    };
+
     public void Dispose()
     {
-        State.OnChange -= StateHasChanged;
+        AppState.OnChange -= StateHasChanged;
     }
 }

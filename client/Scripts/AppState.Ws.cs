@@ -1,26 +1,35 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using shared;
 
-partial class MalibuState
+partial class AppState
 {
 	HubConnection? _hub;
 	public HubConnection Hub => _hub!;
-	
+
 	public event Action<ChatMessageDto>? OnChatReceived;
-	public event Action<SpinResultDto>? OnSpinResulted;
 	public event Action<BetDto>? OnBetPlaced;
+	public event Action<SpinResultDto>? OnSpinResulted;
+	public event Action? OnLdbUpdated;
 
 	async Task ConnectHub()
 	{
 		_hub = new HubConnectionBuilder()
-			.WithUrl($"{_http.BaseAddress}hubs/game?access_token={Jwt}")
+			.WithUrl($"{http.BaseAddress}hubs/game?access_token={Jwt}")
 			.WithAutomaticReconnect()
 			.Build();
+
+		_hub.Reconnected += async (connectionId) =>
+		{
+			Cinf("[SYS] NETWORK RECOVERED. RE-ESTABLISHING DATA LINK...");
+			if (!string.IsNullOrEmpty(Player?.CurrentTableId))
+			{
+				await _hub.InvokeAsync(ServerRPC.SubscribeToTable, Player.CurrentTableId);
+			}
+		};
 
 		_hub.On<decimal>(nameof(IGameClient.BalanceUpdate), bal =>
 		{
 			Player!.Balance = bal;
-			Notify();
 		});
 
 		_hub.On<PlayerDto>(nameof(IGameClient.PlayerJoined),
@@ -40,6 +49,7 @@ partial class MalibuState
 			d =>
 			{
 				OnSpinResulted?.Invoke(d);
+				OnLdbUpdated?.Invoke();
 				Cinf($"[SYS] Winning number is {d.WinningNumber}!");
 			});
 

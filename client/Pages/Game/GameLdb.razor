@@ -3,42 +3,24 @@
 @inject HttpClient Http
 @implements IDisposable
 
-<div class="terminal-ldb">
-    <div class="ldb-header">
-        <span class="text-amber">LIVE LEADERBOARD</span>
-        <span style="font-size: 0.7rem; color: #666;">(ROLLING 60M)</span>
-    </div>
-
-    <table class="ldb-table">
+<div class="terminal-window">
+    <table>
         <thead>
         <tr>
-            <th>IDENTIFIER</th>
-            <th class="text-right">NET PROFIT (USD)</th>
+            <th>Identifier</th>
+            <th style="text-align: right;">Net Profit</th>
         </tr>
         </thead>
         <tbody>
-        @if (ldb == null || ldb.Count == 0)
+        @foreach (LdbEntryDto entry in ldb ?? new())
         {
-            <tr>
-                <td colspan="2" style="color: #444; text-align: center; padding: 20px;">
-                    NO RECENT RESOLUTIONS
+            bool isSelf = entry.PlayerId == AppState.Player?.Id;
+            <tr style="background: @(isSelf ? "var(--bg-active)" : "transparent")">
+                <td class="@(isSelf ? "text-amber" : "")">@(isSelf ? "> " : "")@entry.PlayerName.ToUpper()</td>
+                <td style="text-align: right; font-weight: bold;" class="@(entry.NetProfit >= 0 ? "text-green" : "text-red")">
+                    @(entry.NetProfit > 0 ? "+" : "")@entry.NetProfit.ToString("N2")
                 </td>
             </tr>
-        }
-        else
-        {
-            @foreach (LdbEntryDto entry in ldb)
-            {
-                bool isSelf = entry.PlayerId == AppState.Player?.Id;
-                <tr class="@(isSelf ? "self-row" : "")">
-                    <td class="@(isSelf ? "text-amber" : "")">
-                        @(isSelf ? "> " : "")@entry.PlayerName.ToUpper()
-                    </td>
-                    <td class="text-right @(entry.NetProfit >= 0 ? "text-green" : "text-red")">
-                        @(entry.NetProfit > 0 ? "+" : "")@entry.NetProfit.ToString("N2")
-                    </td>
-                </tr>
-            }
         }
         </tbody>
     </table>
@@ -54,13 +36,19 @@
     protected override async Task OnInitializedAsync()
     {
         AppState.OnLdbUpdated += HandleLdbUpdate;
+        await UpdateLdb();
     }
 
     async void HandleLdbUpdate()
     {
+        await UpdateLdb();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task UpdateLdb()
+    {
         List<LdbEntryDto>? _ldb = await Http.GetFromJsonAsync<List<LdbEntryDto>>($"/tables/{TableId}/leaderboard");
         ldb = _ldb ?? new List<LdbEntryDto>();
-        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()

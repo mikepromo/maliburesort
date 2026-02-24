@@ -10,20 +10,20 @@ public static class Validation
 
 	public static string? IsValidDeposit(decimal val)
 	{
-		bool fine = val < MIN_DEPOSIT || val > MAX_DEPOSIT;
+		bool fine = val >= MIN_DEPOSIT && val <= MAX_DEPOSIT;
 
 		if (fine) return null;
 
-		return $"Invalid amount. Min/max deposit is {MIN_DEPOSIT}/{MAX_DEPOSIT}";
+		return $"Invalid amount [{val}]. Min/max deposit is {MIN_DEPOSIT}/{MAX_DEPOSIT}";
 	}
 
 	public static string? IsValidWithdrawal(decimal val)
 	{
-		bool fine = val < MIN_WITHDRAWAL;
+		bool fine = val >= MIN_WITHDRAWAL;
 
 		if (fine) return null;
 
-		return $"Invalid amount. Min withdrawal is {MIN_WITHDRAWAL}";
+		return $"Invalid amount [{val}]. Min withdrawal is {MIN_WITHDRAWAL}";
 	}
 
 	public const int NameMin = 4;
@@ -31,8 +31,8 @@ public static class Validation
 	public const int PassMin = 4;
 	public const int PassMax = 16;
 
-	public const string NamePattern = @"^[a-zA-Z]+$";
-	public const string NamePatternDescription = "letters only (a-z, A-Z)";
+	public const string NamePattern = @"^[a-zA-Z0-9]+$";
+	public const string NamePatternDescription = "letters only numbers only (a-z, A-Z, 0-9)";
 
 	public const string PassPattern = @"^[a-zA-Z0-9]+$";
 	public const string PassPatternDescription = "letters and numbers only (a-z, A-Z, 0-9)";
@@ -46,7 +46,7 @@ public static class Validation
 
 		if (fine) return null;
 
-		return $"Invalid Name format. Must be {NameMin}-{NameMax} {NamePatternDescription}";
+		return $"Invalid Name format [{val}]. Must be {NameMin}-{NameMax} {NamePatternDescription}";
 	}
 
 	public static string? IsValidPass(string val)
@@ -58,6 +58,6 @@ public static class Validation
 
 		if (fine) return null;
 
-		return $"Invalid Password format. Must be {PassMin}-{PassMax} {PassPatternDescription}";
+		return $"Invalid Password format [{val}]. Must be {PassMin}-{PassMax} {PassPatternDescription}";
 	}
 }

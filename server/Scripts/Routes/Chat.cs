@@ -8,12 +8,21 @@ public static class Chat
 	const int DEFAULT_PAGINATION = 50;
 
 	public static async Task<IResult> GetChat(string tableId, int? count, MainDbContext db)
-	{count ??= DEFAULT_PAGINATION;
+	{
+		count ??= DEFAULT_PAGINATION;
 		List<ChatMessageDto> messages = await db.ChatMessages
 			.Where(cm => cm.TableId == tableId)
 			.OrderByDescending(cm => cm.SentAt)
 			.Take(count.Value)
-			.Select(cm => cm.Wrap())
+			.Select(cm => new ChatMessageDto
+			{
+				Id = cm.Id,
+				TableId = cm.TableId,
+				PlayerId = cm.PlayerId,
+				PlayerName = cm.Player.Name,
+				Message = cm.Message,
+				SentAt = cm.SentAt
+			})
 			.ToListAsync();
 		return Results.Ok(messages);
 	}

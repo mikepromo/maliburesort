@@ -3,13 +3,18 @@
 @using shared
 @implements IDisposable
 
-<div class="terminal-chat">
-    <div class="chat-history">
-        @foreach (ChatMessageDto m in _messages)
-        {
-            <div class="msg">[@m.SentAt.ToString("HH:mm")] @m.PlayerName: @m.Message</div>
-        }
-    </div>
+<div class="chat-stream">
+    @foreach (ChatMessageDto m in _messages)
+    {
+        bool isSelf = m.PlayerId == AppState.Player?.Id;
+        <div class="chat-row">
+            <span class="text-dim">[@m.SentAt.ToString("HH:mm")]</span>
+            <span style="color: @(isSelf ? "var(--amber)" : "var(--blue)"); font-weight: bold; min-width: 80px;">
+                @m.PlayerName.ToUpper():
+            </span>
+            <span style="color: #ccc; word-break: break-all;">@m.Message</span>
+        </div>
+    }
 </div>
 
 @code

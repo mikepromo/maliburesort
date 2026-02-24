@@ -7,21 +7,22 @@ public static class Tables
 {
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
-		List<TableDto> tables =
-			(await db.Tables
-				.Include(t => t.Players)
-				.ToListAsync())
-			.Select(t => t.Wrap())
-			.ToList();
+		List<TableDto> tables = await db.Tables
+			.Select(t => new TableDto
+			{
+				Id = t.Id,
+				Name = t.Name,
+				Tier = t.Tier,
+				PlayerCount = t.Players.Count
+			})
+			.ToListAsync();
 
 		return Results.Ok(tables);
 	}
 
 	public static async Task<IResult> GetTableState(string tableId, MainDbContext db)
 	{
-		GameStateDto? table = await db.Tables
-			.Include(t => t.Players)
-			.Include(t => t.Bets)
+		GameStateDto? state = await db.Tables
 			.Where(t => t.Id == tableId)
 			.Select(t => new GameStateDto
 			{
@@ -37,15 +38,27 @@ public static class Tables
 					NextSpinTime = t.NextSpinTime,
 					WinningNumber = t.LastWinningNumber
 				},
-				Players = t.Players.Select(p => p.Wrap()).ToList(),
-				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => b.Wrap()).ToList()
+				Players = t.Players.Select(p => new PlayerDto
+				{
+					Id = p.Id,
+					Name = p.Name,
+					Balance = p.Balance,
+					CurrentTableId = p.CurrentTableId
+				}).ToList(),
+				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => new BetDto
+				{
+					Id = b.Id,
+					TableId = b.TableId,
+					PlayerId = b.PlayerId,
+					PlayerName = b.Player.Name,
+					ChosenNumber = b.ChosenNumber,
+					Amount = b.Amount
+				}).ToList()
 			})
 			.FirstOrDefaultAsync();
 
-		if (table == null)
-			return Results.NotFound("Table not found".Err());
-
-		return Results.Ok(table);
+		if (state == null) return Results.NotFound("Table not found".Err());
+		return Results.Ok(state);
 	}
 
 	public static async Task<IResult> JoinTable(string tableId, ClaimsPrincipal user, MainDbContext db,
@@ -64,7 +77,7 @@ public static class Tables
 		Player? player = await db.Players.FindAsync(playerId);
 		if (player == null)
 			return Results.NotFound("Player not found".Err());
-		
+
 		if (player.CurrentTableId == tableId)
 			return Results.Conflict("Player already at this table".Err());
 
@@ -76,7 +89,7 @@ public static class Tables
 
 		player.CurrentTableId = tableId;
 		player.LastActiveAt = DateTime.UtcNow;
-		
+
 		table.Players.Add(player);
 
 		IResult? error = await db.TrySaveAsync_HTTP();
@@ -105,7 +118,7 @@ public static class Tables
 			return Results.NotFound("Player not at this table".Err());
 
 		table.Players.Remove(player);
-		
+
 		player.CurrentTableId = null;
 		player.LastActiveAt = DateTime.UtcNow;
 
@@ -174,7 +187,7 @@ public static class Tables
 		if (error is not null) return error;
 
 		await hub.Clients.Group(tableId).BetPlaced(bet.Wrap());
-		
+
 		await hub.Clients.User(bet.PlayerId).BalanceUpdate(bet.Player.Balance);
 
 		return Results.Ok(bet.Wrap());

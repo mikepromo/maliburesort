@@ -6,6 +6,9 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>client</title>
     <base href="/"/>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌴</text></svg>">
+    
     <link href="css/app.css" rel="stylesheet"/>
 </head>
 
@@ -17,17 +20,20 @@
 </div>
 
 <div id="blazor-error-ui">
-    <div style="color: #ffb600; background: #000; padding: 20px; border: 1px solid #ffb600; display: inline-block;">
-        [FATAL EXCEPTION] CLIENT SYSTEM HALTED. MEMORY CORRUPTED.
-        <br/><br/>
-        <a href="#" onclick="rebootSystem(); return false;"
-           style="color: #ffb600; text-decoration: underline; cursor: pointer;">
-            >> PRESS 'R' OR CLICK TO REBOOT SYSTEM
-        </a>
-    </div>
+    <span style="color: #fff; background: #ff3333; padding: 0 5px; margin-right: 10px;">FATAL</span>
+    UNHANDLED EXCEPTION. SYSTEM HALTED.
+    <a href="" class="reload" style="color: #ffb600; margin-left: 20px; text-decoration: underline;">REBOOT</a>
 </div>
 
 <script src="_framework/blazor.webassembly.js"></script>
+
+<script>
+    window.storageSet = (key, value) => localStorage.setItem(key, value);
+    window.storageGet = (key) => localStorage.getItem(key);
+    window.storageRemove = (key) => localStorage.removeItem(key);
+
+    window.getSelectionStart = (el) => el.selectionStart;
+</script>
 
 <script>
     function rebootSystem() {

@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+using System.Text.Json;
 using shared;
 
 public enum OutputType
@@ -81,7 +81,7 @@ partial class AppState
 			case "BAL":
 				await CheckBalance();
 				break;
-			
+
 			default:
 				if (OnCliInput != null)
 					await OnCliInput.Invoke(cmd, args);
@@ -113,23 +113,34 @@ partial class AppState
 	{
 		if (response.IsSuccessStatusCode) return;
 
+		string content = await response.Content.ReadAsStringAsync();
+
 		try
 		{
-			ErrorResponse? err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-			if (err == null) throw new Exception();
-			Serr(err.Code != null
-				? $"[{err.Code}] :: {err.Message}"
-				: err.Message);
+			ErrorResponse? err = JsonSerializer.Deserialize<ErrorResponse>(content,
+				new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+			if (err?.Message != null)
+			{
+				Serr(err.Code != null ? $"[{err.Code}] :: {err.Message}" : err.Message);
+				return;
+			}
 		}
 		catch
 		{
-			//; fallback if server let us down and didn't return our DTO
-			Serr($"[HTTP] :: {(int)response.StatusCode}");
+			//empty
 		}
+
+		string statusInfo = $"{(int)response.StatusCode} {response.StatusCode.ToString().ToUpper()}";
+
+		string summary = content.Length > 150 ? content[..150].Replace("\n", " ") + "..." : content;
+
+		Serr($"[HTTP {statusInfo}] :: {summary}");
 	}
 
 	void PrintLine(string message, OutputType type)
 	{
+		Console.WriteLine($"{type}: {message}");
 		LatestOutput = message.ToUpper();
 		OutputType = type;
 		Dirty();

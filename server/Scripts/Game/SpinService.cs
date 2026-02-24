@@ -75,12 +75,13 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			.Include(t => t.Players)
 			.FirstOrDefaultAsync(t => t.Id == tableId);
 
-		IEnumerable<Player> idles = table!.Players.Where(p => p.LastActiveAt < DateTime.UtcNow.AddMinutes(-30));
-
+		IEnumerable<Player> idles = table!.Players.Where(p => p.LastActiveAt < DateTime.UtcNow.AddMinutes(-30))
+			.ToList();
 
 		foreach (Player player in idles)
 		{
 			table.Players.Remove(player);
+			player.CurrentTableId = null;
 		}
 
 		if (await db.TrySaveAsync() is not DbSaveResult.Success)

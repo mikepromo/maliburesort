@@ -31,7 +31,7 @@ public static class Wallet
 
 		string? depositError = Validation.IsValidDeposit(amount);
 		if (depositError != null)
-			return Results.BadRequest(new { Message = depositError });
+			return Results.BadRequest(depositError.Err());
 
 		player.Balance += amount;
 

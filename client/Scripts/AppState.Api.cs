@@ -1,6 +1,7 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.JSInterop;
 using shared;
 
 public partial class AppState
@@ -9,45 +10,6 @@ public partial class AppState
 	{
 		VersionResponse? response = await http.GetFromJsonAsync<VersionResponse>("/version");
 		ServerVersion = response?.Version;
-	}
-
-	public async Task Login(string name, string pass)
-	{
-		Cinf("VERIFYING CREDENTIALS...");
-
-		try
-		{
-			HttpResponseMessage res = await http.PostAsJsonAsync("/auth/login", new { Name = name, Pass = pass });
-			if (res.IsSuccessStatusCode)
-			{
-				JWTResponse? data = await res.Content.ReadFromJsonAsync<JWTResponse>();
-				Jwt = data!.JWT;
-				Player = data.Player;
-				http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Jwt);
-
-				await ConnectHub();
-				Dirty();
-
-				if (!string.IsNullOrEmpty(Player.CurrentTableId))
-				{
-					Cinf($"SESSION RECOVERED. ROUTING TO TABLE {Player.CurrentTableId}...");
-					nav.NavigateTo($"/game/{Player.CurrentTableId}");
-				}
-				else
-				{
-					Cinf("SUCCESSFUL AUTHENTICATION.");
-					nav.NavigateTo("/lobby");
-				}
-			}
-			else
-			{
-				await Chttp(res);
-			}
-		}
-		catch (Exception ex)
-		{
-			Cex(ex);
-		}
 	}
 
 	public async Task<bool> Register(string name, string pass)
@@ -75,6 +37,51 @@ public partial class AppState
 		}
 	}
 
+	public async Task Login(string name, string pass)
+	{
+		Cinf("VERIFYING CREDENTIALS...");
+
+		try
+		{
+			HttpResponseMessage res = await http.PostAsJsonAsync("/auth/login", new { Name = name, Pass = pass });
+			if (res.IsSuccessStatusCode)
+			{
+				JWTResponse? data = await res.Content.ReadFromJsonAsync<JWTResponse>();
+
+				if (data == null)
+				{
+					Cerr("AUTH ERROR");
+					return;
+				}
+
+				Player = data.Player;
+				
+				await SetJWT(data.JWT);
+				await ConnectHub();
+				Dirty();
+
+				if (!string.IsNullOrEmpty(Player.CurrentTableId))
+				{
+					Cinf($"SESSION RECOVERED.");
+					nav.NavigateTo($"/game/{Player.CurrentTableId}");
+				}
+				else
+				{
+					Cinf("SUCCESSFUL AUTHENTICATION.");
+					nav.NavigateTo("/lobby");
+				}
+			}
+			else
+			{
+				await Chttp(res);
+			}
+		}
+		catch (Exception ex)
+		{
+			Cex(ex);
+		}
+	}
+
 	public async Task Logout()
 	{
 		Cinf("TERMINATING SESSION...");
@@ -86,9 +93,7 @@ public partial class AppState
 
 		await http.PostAsJsonAsync("/auth/logout", new { });
 
-		Jwt = null;
-		Player = null;
-		http.DefaultRequestHeaders.Authorization = null;
+		await ClearJWT();
 
 		if (_hub != null)
 		{
@@ -101,7 +106,6 @@ public partial class AppState
 		nav.NavigateTo("/");
 		Cinf("SESSION TERMINATED. SYSTEM READY.");
 	}
-
 
 	public async Task PlaceBet(int nmb, decimal amt)
 	{

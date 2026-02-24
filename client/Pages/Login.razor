@@ -4,70 +4,38 @@
 
 <div class="login-container">
     <div class="login-title">Malibu Resort</div>
-    <div class="login-subtitle">
-        ROULETTE TERMINAL
-    </div>
+    <div class="login-subtitle">ROULETTE TERMINAL</div>
     
-    <!-- Inputs -->
     <div class="terminal-form">
-        <span class="login-label">@(isRegisterMode ? "CHOOSE IDENTIFIER" : "LOGIN NAME")</span>
-        <input @ref="nameInput"
-               class="login-input"
-               @bind="name"
-               @bind:event="oninput"
-               @onkeydown="HandleNameKey"
-               type="text"
-               autocomplete="off"
-               autofocus />
+        <label class="login-label">@(isRegisterMode ? "CHOOSE IDENTIFIER" : "LOGIN NAME")</label>
+        <input @ref="nameInput" @bind="name" @bind:event="oninput" @onkeydown="HandleNameKey"
+               class="login-input" autocomplete="off" autofocus />
 
-        <span class="login-label">PASSWORD</span>
-        <input @ref="passInput"
-               class="login-input"
-               @bind="pass"
-               @bind:event="oninput"
-               @onkeydown="HandlePassKey"
-               type="password" />
+        <label class="login-label">PASSWORD</label>
+        <input @ref="passInput" @bind="pass" @bind:event="oninput" @onkeydown="HandlePassKey"
+               class="login-input" type="password" />
 
         @if (isRegisterMode)
         {
-            <span class="login-label">CONFIRM PASSWORD</span>
-            <input @ref="confirmInput"
-                   class="login-input"
-                   @bind="passConfirm"
-                   @bind:event="oninput"
-                   @onkeydown="HandleConfirmKey"
-                   type="password" />
+            <label class="login-label">CONFIRM PASSWORD</label>
+            <input @ref="confirmInput" @bind="passConfirm" @bind:event="oninput" @onkeydown="HandleConfirmKey"
+                   class="login-input" type="password" />
         }
 
         <br/>
-        
         <button class="login-btn" @onclick="ExecuteConfirm">
             @(isRegisterMode ? "INITIALIZE ID" : "AUTHENTICATE")
         </button>
     </div>
 
-    <!-- Context Switchers -->
     <div class="login-links">
-        @if (isRegisterMode)
-        {
-            <div tabindex="0" style="cursor: pointer; outline: none;" 
-                 @onclick="ToggleMode" 
-                 @onkeydown="HandleToggleKey">
-                &lt; BACK TO LOGIN
-            </div>
-        }
-        else
-        {
-            <div tabindex="0" style="cursor: pointer; outline: none;" 
-                 @onclick="ToggleMode" 
-                 @onkeydown="HandleToggleKey">
-                >> CREATE A NEW LOGIN
-            </div>
-            
-            <div style="margin-top: 10px; font-size: 14px; color: #666;">
-                Tip: Use Tab and Return keyboard buttons for the navigation.
-            </div>
-        }
+        <div @onclick="ToggleMode" class="text-blue" style="cursor: pointer; text-decoration: underline;">
+            @(isRegisterMode ? "< BACK TO LOGIN" : ">> CREATE A NEW LOGIN")
+        </div>
+        
+        <div style="margin-top: 20px; font-size: 13px; color: #444; font-weight: normal;">
+            Tip: Use Tab and Enter keyboard keys for the navigation.
+        </div>
     </div>
 
     <div tabindex="0" @onfocus="ResetFocus"></div>

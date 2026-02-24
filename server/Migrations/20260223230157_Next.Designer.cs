@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -10,9 +11,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace server.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223230157_Next")]
+    partial class Next
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,15 +104,9 @@ namespace server.Migrations
                     b.Property<decimal>("Balance")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("CurrentTableId")
-                        .HasColumnType("text");
-
                     b.Property<string>("JWTVersion")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<DateTime>("LastActiveAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -129,6 +126,9 @@ namespace server.Migrations
                     b.Property<DateTime>("RefreshTokenExpiry")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("TableId")
+                        .HasColumnType("text");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -137,10 +137,10 @@ namespace server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CurrentTableId");
-
                     b.HasIndex("NameNormalized")
                         .IsUnique();
+
+                    b.HasIndex("TableId");
 
                     b.ToTable("Players");
                 });
@@ -208,11 +208,9 @@ namespace server.Migrations
 
             modelBuilder.Entity("Player", b =>
                 {
-                    b.HasOne("Table", "CurrentTable")
+                    b.HasOne("Table", null)
                         .WithMany("Players")
-                        .HasForeignKey("CurrentTableId");
-
-                    b.Navigation("CurrentTable");
+                        .HasForeignKey("TableId");
                 });
 
             modelBuilder.Entity("Player", b =>

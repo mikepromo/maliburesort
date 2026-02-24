@@ -18,18 +18,18 @@
             <div class="cmd-line">
                 <span>/</span>
                 <input id="cmdInput"
-                       @bind="cmdText"
+                       @bind="cliText"
                        @bind:event="oninput"
-                       @onkeyup="HandleKeyUp"
+                       @onkeyup="HandleCliKeyDown"
                        placeholder="ENTER COMMAND"
                        autocomplete="off"/>
             </div>
-
+    
             <div class="stat-line">
                 <span style="color: var(--bb-white); font-weight: bold;">
                     USER: <span class="text-amber">@(State.Player?.Name?.ToUpper() ?? "GUEST") &nbsp;|&nbsp; </span>
                     BAL: <span class="text-green">USD @(State.Player?.Balance.ToString("N2") ?? "0.00")</span>
-            </span>
+                </span>
             </div>
         </div>
     }
@@ -44,37 +44,35 @@
 
 @code
 {
-    protected ElementReference cmdInput;
-    string cmdText = "";
-
-    protected override void OnInitialized()
-    {
-        State.OnChange += StateHasChanged;
-        State.OnFocusCmdRequested += FocusCmd;
-    }
+    protected ElementReference cliInput;
+    string cliText = "";
 
     protected override async Task OnInitializedAsync()
     {
+        State.OnChange += StateHasChanged;
+        State.OnFocusCliRequested += FocusCli;
         await State.LoadServerVersionAsync();
     }
 
-    void FocusCmd()
+    void FocusCli()
     {
-        cmdInput.FocusAsync();
+        cliInput.FocusAsync();
     }
 
-    void HandleKeyUp(KeyboardEventArgs e)
+    protected async Task HandleCliKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(cmdText))
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(cliText))
         {
-            State.DispatchCommand(cmdText);
-            cmdText = "";
+            await State.DispatchCommand(cliText);
+            cliText = "";
+        }
+        else if (e.Key == "Enter")
+        {
+            State.RequestCliFocus();
         }
         else if (e.Key == "Escape")
         {
-            cmdText = "";
-
-            //todo: drop focus
+            cliText = "";
         }
     }
 

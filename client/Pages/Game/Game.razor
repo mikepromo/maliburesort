@@ -1,0 +1,20 @@
+@page "/game/{TableId}"
+@inject HttpClient Http
+@inject MalibuState State
+
+<div class="game-layout">
+    <div class="main-column">
+        <GameBoard TableId="@TableId"/>
+        <GameChat TableId="@TableId"/>
+    </div>
+
+    <div class="side-column">
+        <GameLdb TableId="@TableId"/>
+    </div>
+</div>
+
+@code
+{
+    [Parameter]
+    public string TableId { get; set; }
+}

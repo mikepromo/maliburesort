@@ -17,11 +17,39 @@
 </div>
 
 <div id="blazor-error-ui">
-    [SYSTEM FAILURE] An unhandled error has occurred.
-    <a class="reload" href="/">REBOOT SYSTEM</a>
-    <span class="dismiss">X</span>
+    <div style="color: #ffb600; background: #000; padding: 20px; border: 1px solid #ffb600; display: inline-block;">
+        [FATAL EXCEPTION] CLIENT SYSTEM HALTED. MEMORY CORRUPTED.
+        <br/><br/>
+        <a href="#" onclick="rebootSystem(); return false;"
+           style="color: #ffb600; text-decoration: underline; cursor: pointer;">
+            >> PRESS 'R' OR CLICK TO REBOOT SYSTEM
+        </a>
+    </div>
 </div>
+
 <script src="_framework/blazor.webassembly.js"></script>
+
+<script>
+    function rebootSystem() {
+        window.location.replace(window.location.origin + '/');
+    }
+
+    document.addEventListener('keydown', function (e) {
+        var errorUi = document.getElementById('blazor-error-ui');
+
+        if (errorUi && window.getComputedStyle(errorUi).display !== 'none') {
+            if (e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                rebootSystem();
+            }
+        }
+    });
+</script>
+
+<script>
+    window.getSelectionStart = (el) => el.selectionStart;
+</script>
+
 </body>
 
 </html>

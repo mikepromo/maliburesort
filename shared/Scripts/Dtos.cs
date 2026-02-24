@@ -22,6 +22,7 @@ public class PlayerDto
 	public required string Id { get; set; }
 	public required string Name { get; set; }
 	public decimal Balance { get; set; }
+	public string? CurrentTableId { get; set; } 
 }
 
 public class BetDto

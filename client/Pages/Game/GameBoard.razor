@@ -1,0 +1,121 @@
+@inject HttpClient Http
+@inject MalibuState State
+@using shared
+@implements IDisposable
+
+<div class="terminal-board">
+    <div class="board-header">
+        <div class="status-item">
+            <span class="lbl">TABLE:</span>
+            <span class="val">@(gameState?.table.Name.ToUpper() ?? "CONNECTING...")</span>
+        </div>
+        <div class="status-item">
+            <span class="lbl">LAST:</span>
+            <span class="val text-amber">@(gameState?.spinResult.WinningNumber?.ToString() ?? "--")</span>
+        </div>
+        <div class="status-item">
+            <span class="lbl">T-MINUS:</span>
+            <span class="val @(GetTimerColor())">@GetTimeLeft()S</span>
+        </div>
+    </div>
+
+    <!-- GRID: 0 + 1-36 -->
+    <div class="roulette-container">
+        <div class="cell n-0 @(IsWinner(0))" @onclick="() => PlaceBet(0, 100)">
+            0 @RenderBet(0)
+        </div>
+        
+        <div class="numbers-grid">
+            @for (int i = 1; i <= 36; i++)
+            {
+                int n = i;
+                <div class="cell @(IsWinner(n))" @onclick="() => PlaceBet(n, 100)">
+                    @n
+                    @RenderBet(n)
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code
+{
+    [Parameter] public required string TableId { get; set; }
+    GameStateDto? gameState;
+    bool _isTicking = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnCliInput += HandleCliInput;
+        State.OnSpinResulted += HandleSpin;
+
+        await Http.PostAsJsonAsync($"/tables/{TableId}/join", new { });
+        await State.Hub.InvokeAsync(ServerRPC.SubscribeToTable, TableId);
+
+        gameState = await Http.GetFromJsonAsync<GameStateDto>($"/tables/{TableId}/state");
+
+        // Minimal loop to refresh UI every second for the countdown
+        _ = Task.Run(async () => {
+            while (_isTicking) {
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1000);
+            }
+        });
+    }
+
+    string GetTimeLeft() {
+        if (gameState == null) return "0";
+        var diff = (gameState.spinResult.NextSpinTime - DateTime.UtcNow).TotalSeconds;
+        return diff > 0 ? ((int)diff).ToString() : "0";
+    }
+
+    string GetTimerColor() {
+        int.TryParse(GetTimeLeft(), out int sec);
+        return sec < 5 ? "text-red" : "text-green";
+    }
+
+    string IsWinner(int n) => gameState?.spinResult.WinningNumber == n ? "winner" : "";
+
+    RenderFragment RenderBet(int n) => __builder => {
+        var myBet = gameState?.Bets
+            .Where(b => b.ChosenNumber == n && b.PlayerId == State.Player?.Id)
+            .Sum(b => b.Amount) ?? 0;
+            
+        if (myBet > 0) {
+            <div class="chip">@myBet.ToString("N0")</div>
+        }
+    };
+
+    async Task HandleCliInput(string cmd, string[] args)
+    {
+        if ((cmd == "BET" || cmd == "B") && args.Length == 2)
+        {
+            if (int.TryParse(args[0], out int nmb) && decimal.TryParse(args[1], out decimal amt))
+            {
+                await PlaceBet(nmb, amt);
+            }
+        }
+    }
+
+    async Task PlaceBet(int n, decimal amt)
+    {
+        var res = await Http.PostAsJsonAsync($"/tables/{TableId}/bet", new PlaceBetRequest(n, amt));
+        if (!res.IsSuccessStatusCode) await State.Chttp(res);
+    }
+
+    private void HandleSpin(SpinResultDto dto)
+    {
+        if (gameState != null) {
+            gameState.spinResult = dto;
+            gameState.Bets.Clear();
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _isTicking = false;
+        State.OnCliInput -= HandleCliInput;
+        State.OnSpinResulted -= HandleSpin;
+    }
+}

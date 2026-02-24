@@ -1,0 +1,64 @@
+@inject HttpClient Http
+@inject MalibuState State
+@using shared
+@implements IDisposable
+
+<div class="terminal-chat">
+    <div class="chat-history">
+        @foreach (ChatMessageDto m in _messages)
+        {
+            <div class="msg">[@m.SentAt.ToString("HH:mm")] @m.PlayerName: @m.Message</div>
+        }
+    </div>
+</div>
+
+@code
+{
+    [Parameter]
+    public required string TableId { get; set; }
+    readonly List<ChatMessageDto> _messages = new();
+    readonly HashSet<string> _ids = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnCliInput += HandleCliInput;
+        State.OnChatReceived += OnNewMsg;
+
+        List<ChatMessageDto>? history = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/tables/{TableId}/chat");
+        if (history != null) history.ForEach(AddMsg);
+    }
+
+    private void OnNewMsg(ChatMessageDto cm)
+    {
+        if (cm.TableId != TableId) return;
+        AddMsg(cm);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void AddMsg(ChatMessageDto m)
+    {
+        if (_ids.Add(m.Id)) _messages.Add(m);
+    }
+
+    async Task HandleCliInput(string cmd, string[] args)
+    {
+        if ((cmd == "CHAT" || cmd == "MSG" || cmd == "C") && args.Length > 0)
+        {
+            string message = string.Join(" ", args);
+
+            if (message.Length > 280)
+                message = message[..280];
+
+            HttpResponseMessage res = await Http.PostAsJsonAsync($"/tables/{TableId}/chat", new SendChatRequest(message));
+
+            if (!res.IsSuccessStatusCode)
+                await State.Chttp(res);
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChatReceived -= OnNewMsg;
+        State.OnCliInput -= HandleCliInput;
+    }
+}

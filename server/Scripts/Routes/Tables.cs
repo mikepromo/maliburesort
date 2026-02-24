@@ -49,7 +49,7 @@ public static class Tables
 	}
 
 	public static async Task<IResult> JoinTable(string tableId, ClaimsPrincipal user, MainDbContext db,
-		IHubContext<GameHub> hub)
+		IHubContext<GameHub, IGameClient> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -64,25 +64,31 @@ public static class Tables
 		Player? player = await db.Players.FindAsync(playerId);
 		if (player == null)
 			return Results.NotFound("Player not found".Err());
-
-		if (table.Players.Any(p => p.Id == playerId))
+		
+		if (player.CurrentTableId == tableId)
 			return Results.Conflict("Player already at this table".Err());
+
+		if (player.CurrentTableId != null)
+			return Results.Conflict("You are already at another table. Leave it first.".Err());
 
 		if (table.Players.Count >= table.Tier.MaxSeats())
 			return Results.BadRequest("Table is full".Err());
 
+		player.CurrentTableId = tableId;
+		player.LastActiveAt = DateTime.UtcNow;
+		
 		table.Players.Add(player);
 
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(tableId).SendAsync(RPC.PlayerJoined, player.Wrap());
+		await hub.Clients.Group(tableId).PlayerJoined(player.Wrap());
 
 		return Results.Ok(table.Wrap());
 	}
 
 	public static async Task<IResult> LeaveTable(string tableId, ClaimsPrincipal user, MainDbContext db,
-		IHubContext<GameHub> hub)
+		IHubContext<GameHub, IGameClient> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -99,17 +105,20 @@ public static class Tables
 			return Results.NotFound("Player not at this table".Err());
 
 		table.Players.Remove(player);
+		
+		player.CurrentTableId = null;
+		player.LastActiveAt = DateTime.UtcNow;
 
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(tableId).SendAsync(RPC.PlayerLeft, player.Wrap());
+		await hub.Clients.Group(tableId).PlayerLeft(player.Wrap());
 
 		return Results.Ok(table.Wrap());
 	}
 
 	public static async Task<IResult> PlaceBet(string tableId, ClaimsPrincipal user, PlaceBetRequest request,
-		MainDbContext db, IHubContext<GameHub> hub)
+		MainDbContext db, IHubContext<GameHub, IGameClient> hub)
 	{
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found".Err());
@@ -146,6 +155,7 @@ public static class Tables
 			return Results.BadRequest("Too close to next spin, wait a moment".Err());
 
 		player.Balance -= request.Amount;
+		player.LastActiveAt = DateTime.UtcNow;
 
 		Bet bet = new()
 		{
@@ -163,8 +173,9 @@ public static class Tables
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(tableId).SendAsync(RPC.BetPlaced, bet.Wrap());
-		await hub.Clients.User(player.Id).SendAsync(RPC.BalanceUpdate, player.Balance);
+		await hub.Clients.Group(tableId).BetPlaced(bet.Wrap());
+		
+		await hub.Clients.User(bet.PlayerId).BalanceUpdate(bet.Player.Balance);
 
 		return Results.Ok(bet.Wrap());
 	}

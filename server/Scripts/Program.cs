@@ -2,6 +2,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 
 public class Program
@@ -50,7 +51,7 @@ public class Program
 		}
 
 		Routes.MapRouters(app);
-		
+
 		app.MapHub<GameHub>("/hubs/game");
 
 		app.Run();
@@ -60,7 +61,7 @@ public class Program
 			builder.Services.AddDbContext<MainDbContext>(options =>
 			{
 				options.UseNpgsql(
-					builder.Configuration.GetConnectionString("DefaultConnection") 
+					builder.Configuration.GetConnectionString("DefaultConnection")
 					?? throw new Exception("Database Connection String is missing!"));
 			});
 		}
@@ -110,8 +111,8 @@ public class Program
 					{
 						OnMessageReceived = context =>
 						{
-							var accessToken = context.Request.Query["access_token"];
-							var path = context.HttpContext.Request.Path;
+							StringValues accessToken = context.Request.Query["access_token"];
+							PathString path = context.HttpContext.Request.Path;
 							if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
 							{
 								context.Token = accessToken;
@@ -120,7 +121,7 @@ public class Program
 						}
 					};
 				});
-			
+
 			builder.Services.AddAuthorization();
 		}
 

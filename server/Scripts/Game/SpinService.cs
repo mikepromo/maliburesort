@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using shared;
 
-public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub> hub)
+public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub, IGameClient> hub)
 {
 	public async Task DoSpinsAsync()
 	{
@@ -18,6 +18,8 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			using IServiceScope scope = scopeFactory.CreateScope();
 			MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 
+			await RemoveIdlePlayers(table.Id, db);
+
 			int winningNumber = Random.Shared.Next(0, 37);
 			await ProcessSpin(table.Id, db, winningNumber);
 		}
@@ -27,7 +29,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 	{
 		Table? table = await db.Tables.FindAsync(tableId);
 		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.Tier.SpinInterval_sec());
-		table!.LastWinningNumber = winningNumber; 
+		table!.LastWinningNumber = winningNumber;
 
 		List<Bet> bets = await db.Bets
 			.Include(b => b.Player)
@@ -54,8 +56,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 		{
 			if (bet.Payout > 0)
 			{
-				await hub.Clients.User(bet.PlayerId)
-					.SendAsync(RPC.BalanceUpdate, bet.Player.Balance);
+				await hub.Clients.User(bet.PlayerId).BalanceUpdate(bet.Player.Balance);
 			}
 		}
 
@@ -65,7 +66,25 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			WinningNumber = winningNumber
 		};
 
-		await hub.Clients.Group(tableId).SendAsync(RPC.ReceiveSpin, spinResult);
+		await hub.Clients.Group(tableId).ReceiveSpin(spinResult);
+	}
+
+	public async Task RemoveIdlePlayers(string tableId, MainDbContext db)
+	{
+		Table? table = await db.Tables
+			.Include(t => t.Players)
+			.FirstOrDefaultAsync(t => t.Id == tableId);
+
+		IEnumerable<Player> idles = table!.Players.Where(p => p.LastActiveAt < DateTime.UtcNow.AddMinutes(-30));
+
+
+		foreach (Player player in idles)
+		{
+			table.Players.Remove(player);
+		}
+
+		if (await db.TrySaveAsync() is not DbSaveResult.Success)
+			throw new Exception();
 	}
 }
 

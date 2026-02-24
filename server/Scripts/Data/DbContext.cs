@@ -112,6 +112,10 @@ public class Player
 	public string JWTVersion { get; set; } = null!;
 	public string? RefreshToken { get; set; }
 	public DateTime RefreshTokenExpiry { get; set; }
+	
+	public DateTime LastActiveAt { get; set; }
+	public string? CurrentTableId { get; set; }
+	public Table? CurrentTable { get; set; }
 
 	public decimal Balance { get; set; }
 
@@ -125,7 +129,8 @@ public class Player
 		{
 			Id = Id,
 			Name = Name,
-			Balance = Balance
+			Balance = Balance,
+			CurrentTableId = CurrentTableId
 		};
 	}
 }

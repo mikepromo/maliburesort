@@ -19,7 +19,7 @@ public static class Chat
 	}
 
 	public static async Task<IResult> SendInChat(string tableId, ClaimsPrincipal user, SendChatRequest request,
-		MainDbContext db, IHubContext<GameHub> hub)
+		MainDbContext db, IHubContext<GameHub, IGameClient> hub)
 	{
 		Table? table = await db.Tables
 			.Include(t => t.Players)
@@ -45,11 +45,12 @@ public static class Chat
 		};
 
 		db.ChatMessages.Add(cm);
+		player.LastActiveAt = DateTime.UtcNow;
 
 		IResult? error = await db.TrySaveAsync_HTTP();
 		if (error is not null) return error;
 
-		await hub.Clients.Group(tableId).SendAsync(RPC.ReceiveChat, cm.Wrap());
+		await hub.Clients.Group(tableId).ReceiveChat(cm.Wrap());
 
 		return Results.NoContent();
 	}

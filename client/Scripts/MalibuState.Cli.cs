@@ -11,17 +11,17 @@ public enum OutputType
 
 partial class MalibuState
 {
-	public event Action<string, string[]>? OnConsoleCommand;
+	public event Func<string, string[], Task>? OnCliInput;
 	public string LatestOutput { get; private set; } = "SYSTEM READY";
 	public OutputType OutputType { get; private set; }
 
-	public event Action? OnFocusCmdRequested;
-	
-	public void RequestCmdFocus()
+	public event Action? OnFocusCliRequested;
+
+	public void RequestCliFocus()
 	{
-		OnFocusCmdRequested?.Invoke();
+		OnFocusCliRequested?.Invoke();
 	}
-	
+
 	public string OutputCssClass => OutputType switch
 	{
 		OutputType.ClientInfo      => "text-green",
@@ -31,11 +31,11 @@ partial class MalibuState
 		_                          => "text-amber"
 	};
 
-	public void DispatchCommand(string commandLine)
+	public async Task DispatchCommand(string cliText)
 	{
-		if (string.IsNullOrWhiteSpace(commandLine)) return;
+		if (string.IsNullOrWhiteSpace(cliText)) return;
 
-		string[] parts = commandLine.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		string[] parts = cliText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
 		string cmd = parts[0].ToUpperInvariant();
 		string[] args = parts.Skip(1).ToArray();
@@ -66,7 +66,8 @@ partial class MalibuState
 				;
 				break;
 			default:
-				OnConsoleCommand?.Invoke(cmd, args);
+				if (OnCliInput != null)
+					await OnCliInput.Invoke(cmd, args);
 				break;
 		}
 	}

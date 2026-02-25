@@ -1,8 +1,6 @@
 @page "/lobby"
-@inject HttpClient Http
-@inject NavigationManager Nav
-@inject AppState AppState
 @using shared
+@inject AppState AppState
 @implements IDisposable
 
 <div class="terminal-window" style="height: 100%;">
@@ -19,10 +17,14 @@
             </tr>
             </thead>
             <tbody>
-            @if (tables != null)
+            @if (tables == null)
+            {
+                //todo: render loading
+            }
+            else
             {
                 int idx = 1;
-                @foreach (var t in tables)
+                @foreach (TableDto t in tables)
                 {
                     <tr style="border-bottom: 1px solid #111; font-size: 14px;">
                         <td style="padding: 8px; color: var(--amber);">@idx</td>
@@ -36,7 +38,7 @@
             }
             </tbody>
         </table>
-        
+
         <div style="margin-top: 20px; color: #444; font-size: 12px;">
             >> USE 'JOIN [INDEX]' TO CONNECT TO A NODE
         </div>
@@ -45,48 +47,16 @@
 
 @code
 {
-    List<TableDto>? tables;
-
+    List<TableDto>? tables => AppState?.LobbyContext?.Tables;
+    
     protected override async Task OnInitializedAsync()
     {
-        AppState.OnCliInput += HandleCliInput;
-        List<TableDto>? _tables = await Http.GetFromJsonAsync<List<TableDto>>("/tables");
-        tables = _tables ?? new List<TableDto>();
-    }
-
-    async Task HandleCliInput(string cmd, string[] args)
-    {
-        switch (cmd)
-        {
-            case "JOIN":
-                if (tables != null && args.Length == 1)
-                {
-                    TableDto? table = null;
-                    string target = args[0];
-
-                    if (int.TryParse(target, out int index) &&
-                        index > 0 && index <= tables.Count)
-                    {
-                        table = tables[index - 1];
-                    }
-
-                    if (table != null)
-                    {
-                        await AppState.JoinTable(table.Id);
-                    }
-                }
-                break;
-            case "LOBBY":
-            case "HOME":
-            case "EXIT":
-            case "Q":
-                await AppState.LeaveTable();
-                break;
-        }
+        AppState.OnChange += StateHasChanged;
+        await AppState.RefreshLobby();
     }
 
     public void Dispose()
     {
-        AppState.OnCliInput -= HandleCliInput;
+        AppState.OnChange -= StateHasChanged;
     }
 }

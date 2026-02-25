@@ -1,0 +1,44 @@
+@inject AppState AppState
+@using shared
+@implements IDisposable
+
+<div class="chat-stream">
+    @if (Chat == null)
+    {
+        //todo loading label
+    }
+    else if (Chat.Count == 0)
+    {
+        //todo no record label
+    }
+    else
+    {
+        foreach (ChatMessageDto m in Chat)
+        {
+            bool isSelf = m.PlayerId == Player?.Id;
+            <div class="chat-row">
+                <span class="text-dim">[@m.SentAt.ToString("HH:mm")]</span>
+                <span style="color: @(isSelf ? "var(--amber)" : "var(--blue)"); font-weight: bold; min-width: 80px;">
+                    @m.PlayerName.ToUpper():
+                </span>
+                <span style="color: #ccc; word-break: break-all;">@m.Message</span>
+            </div>
+        }
+    }
+</div>
+
+@code
+{
+    List<ChatMessageDto>? Chat => AppState.GameContext?.Chat;
+    PlayerDto? Player => AppState.Player;
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
+}

@@ -1,3 +1,4 @@
+using client.Razor;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
@@ -30,6 +31,11 @@ public class Program
 
 		builder.Services.AddScoped<AppState>();
 
-		await builder.Build().RunAsync();
+		WebAssemblyHost host = builder.Build();
+
+		AppState appState = host.Services.GetRequiredService<AppState>();
+		await appState.LaunchAsync();
+
+		await host.RunAsync();
 	}
 }

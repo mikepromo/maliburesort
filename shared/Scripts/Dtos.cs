@@ -63,7 +63,7 @@ public class TableDto
 	public decimal MaxSeats => Tier.MaxSeats();
 }
 
-public class GameStateDto
+public class GameBoardDto
 {
 	public required TableDto table { get; set; }
 	public required SpinResultDto spinResult { get; set; }

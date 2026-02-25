@@ -1,0 +1,53 @@
+@inject AppState AppState
+@using shared
+@implements IDisposable
+
+<div class="terminal-window">
+    <table>
+        <thead>
+        <tr>
+            <th>Identifier</th>
+            <th style="text-align: right;">Net Profit</th>
+        </tr>
+        </thead>
+        <tbody>
+        @if (Ldb == null)
+        {
+            //todo loading label
+        }
+        else if (Ldb.Count == 0)
+        {
+            //todo no record label
+        }
+        else
+        {
+            foreach (LdbEntryDto entry in Ldb)
+            {
+                bool isSelf = entry.PlayerId == Player?.Id;
+                <tr style="background: @(isSelf ? "var(--bg-active)" : "transparent")">
+                    <td class="@(isSelf ? "text-amber" : "")">@(isSelf ? "> " : "")@entry.PlayerName.ToUpper()</td>
+                    <td style="text-align: right; font-weight: bold;"
+                        class="@(entry.NetProfit >= 0 ? "text-green" : "text-red")">
+                        @(entry.NetProfit > 0 ? "+" : "")@entry.NetProfit.ToString("N2")
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>
+
+@code
+{
+    List<LdbEntryDto>? Ldb => AppState.GameContext?.Ldb;
+    PlayerDto? Player => AppState.Player;
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
+}

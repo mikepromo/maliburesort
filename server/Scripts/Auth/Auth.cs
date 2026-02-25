@@ -7,6 +7,17 @@ using shared;
 
 public static partial class Auth
 {
+	public static async Task<IResult> Me(ClaimsPrincipal user, MainDbContext db)
+	{
+		Player? player = await user.GetPlayerSecure(db);
+		if (player is null)
+		{
+			return Results.Unauthorized();
+		}
+
+		return Results.Ok(player.Wrap());
+	}
+
 	public static async Task<IResult> Register(PlayerCredentials request, MainDbContext db)
 	{
 		string? nameError = Validation.IsValidName(request.Name);
@@ -78,7 +89,7 @@ public static partial class Auth
 			SameSite = SameSiteMode.Strict,
 			Expires = player.RefreshTokenExpiry
 		});
-	
+
 		return Results.Ok(new JWTResponse(jwt, player.Wrap()));
 	}
 

@@ -1,20 +1,28 @@
 @page "/game/{TableId}"
+@inject AppState AppState
+@implements IDisposable
 
 <div style="display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 1fr 250px; height: 100%; gap: 4px;">
-    
+
     <div class="terminal-window" style="grid-row: 1;">
         <div class="terminal-header">ROULETTE TABLE ENGINE</div>
-        <div class="flex-fill"><GameBoard TableId="@TableId"/></div>
+        <div class="flex-fill">
+            <GameBoard/>
+        </div>
     </div>
 
     <div class="terminal-window" style="grid-row: 2;">
         <div class="terminal-header">COMMUNICATIONS</div>
-        <div class="flex-fill"><GameChat TableId="@TableId"/></div>
+        <div class="flex-fill">
+            <GameChat/>
+        </div>
     </div>
 
     <div class="terminal-window" style="grid-column: 2; grid-row: 1 / span 2;">
         <div class="terminal-header">NETWORK PERFORMANCE (LDB)</div>
-        <div class="flex-fill"><GameLdb TableId="@TableId"/></div>
+        <div class="flex-fill">
+            <GameLdb/>
+        </div>
     </div>
 </div>
 
@@ -22,4 +30,15 @@
 {
     [Parameter]
     public required string TableId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += StateHasChanged;
+        await AppState.RefreshGame(TableId);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
 }

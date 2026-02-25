@@ -14,6 +14,8 @@ public static class Routes
 		app.MapGet("/version", () => new { Version = Version.VersionOf(Assembly.GetExecutingAssembly()) })
 			.AllowAnonymous()
 			.RequireRateLimiting(NORMAL);
+
+		
 		
 		RouteGroupBuilder authGroup = app.MapGroup("/auth")
 			.RequireRateLimiting(AUTH);
@@ -32,6 +34,8 @@ public static class Routes
 		playerGroup.MapPost("/withdraw", Wallet.Withdraw)
 			.RequireRateLimiting(BILLING);
 		playerGroup.MapGet("/balance", Wallet.Balance)
+			.RequireRateLimiting(NORMAL);
+		playerGroup.MapGet("/me", Auth.Me)
 			.RequireRateLimiting(NORMAL);
 
 		RouteGroupBuilder tablesGroup = app.MapGroup("/tables")

@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Components;
+using System.Reflection;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.JSInterop;
 using shared;
 
 public partial class AppState
@@ -10,6 +9,23 @@ public partial class AppState
 	{
 		VersionResponse? response = await http.GetFromJsonAsync<VersionResponse>("/version");
 		ServerVersion = response?.Version;
+
+		Version.VersionOf(Assembly.GetExecutingAssembly());
+	}
+
+	public async Task SyncPlayer()
+	{
+		HttpResponseMessage res = await http.GetAsync("/players/me");
+		if (res.IsSuccessStatusCode)
+		{
+			Player = await res.Content.ReadFromJsonAsync<PlayerDto>();
+			Dirty();
+			Cinf($"[SYS] IDENTITY RESTORED: {Player?.Name.ToUpper()}");
+		}
+		else
+		{
+			await ClearJWT();
+		}
 	}
 
 	public async Task<bool> Register(string name, string pass)
@@ -55,7 +71,7 @@ public partial class AppState
 				}
 
 				Player = data.Player;
-				
+
 				await SetJWT(data.JWT);
 				await ConnectHub();
 				Dirty();

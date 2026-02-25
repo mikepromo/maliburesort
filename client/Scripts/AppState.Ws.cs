@@ -6,11 +6,6 @@ partial class AppState
 	HubConnection? _hub;
 	public HubConnection Hub => _hub!;
 
-	public event Action<ChatMessageDto>? OnChatReceived;
-	public event Action<BetDto>? OnBetPlaced;
-	public event Action<SpinResultDto>? OnSpinResulted;
-	public event Action? OnLdbUpdated;
-
 	async Task ConnectHub()
 	{
 		_hub = new HubConnectionBuilder()
@@ -27,10 +22,7 @@ partial class AppState
 			}
 		};
 
-		_hub.On<decimal>(nameof(IGameClient.BalanceUpdate), bal =>
-		{
-			Player!.Balance = bal;
-		});
+		_hub.On<decimal>(nameof(IGameClient.BalanceUpdate), bal => { Player!.Balance = bal; });
 
 		_hub.On<PlayerDto>(nameof(IGameClient.PlayerJoined),
 			d => Cinf($"[SYS] {d.Name} connected."));
@@ -41,20 +33,26 @@ partial class AppState
 		_hub.On<BetDto>(nameof(IGameClient.BetPlaced),
 			d =>
 			{
-				OnBetPlaced?.Invoke(d);
+				GameContext?.HandleRemoteBet(d);
+				Dirty();
 				Cinf($"[SYS] Bet {d.Amount} on {d.ChosenNumber} placed.");
 			});
 
 		_hub.On<SpinResultDto>(nameof(IGameClient.ReceiveSpin),
-			d =>
+			async d =>
 			{
-				OnSpinResulted?.Invoke(d);
-				OnLdbUpdated?.Invoke();
+				GameContext?.HandleSpin(d);
+				if (GameContext != null) await GameContext.FetchLdb();
+				Dirty();
 				Cinf($"[SYS] Winning number is {d.WinningNumber}!");
 			});
 
 		_hub.On<ChatMessageDto>(nameof(IGameClient.ReceiveChat),
-			d => { OnChatReceived?.Invoke(d); });
+			d =>
+			{
+				GameContext?.HandleNewMsg(d);
+				Dirty();
+			});
 
 		await _hub.StartAsync();
 	}

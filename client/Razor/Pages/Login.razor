@@ -1,25 +1,26 @@
 @page "/"
-@using shared
 @inject AppState AppState
+@using shared
+@implements IDisposable
 
 <div class="login-container">
     <div class="login-title">Malibu Resort</div>
     <div class="login-subtitle">ROULETTE TERMINAL</div>
-    
+
     <div class="terminal-form">
         <label class="login-label">@(isRegisterMode ? "CHOOSE IDENTIFIER" : "LOGIN NAME")</label>
         <input @ref="nameInput" @bind="name" @bind:event="oninput" @onkeydown="HandleNameKey"
-               class="login-input" autocomplete="off" autofocus />
+               class="login-input" autocomplete="off" autofocus/>
 
         <label class="login-label">PASSWORD</label>
         <input @ref="passInput" @bind="pass" @bind:event="oninput" @onkeydown="HandlePassKey"
-               class="login-input" type="password" />
+               class="login-input" type="password"/>
 
         @if (isRegisterMode)
         {
             <label class="login-label">CONFIRM PASSWORD</label>
             <input @ref="confirmInput" @bind="passConfirm" @bind:event="oninput" @onkeydown="HandleConfirmKey"
-                   class="login-input" type="password" />
+                   class="login-input" type="password"/>
         }
 
         <br/>
@@ -32,7 +33,7 @@
         <div @onclick="ToggleMode" class="text-blue" style="cursor: pointer; text-decoration: underline;">
             @(isRegisterMode ? "< BACK TO LOGIN" : ">> CREATE A NEW LOGIN")
         </div>
-        
+
         <div style="margin-top: 20px; font-size: 13px; color: #444; font-weight: normal;">
             Tip: Use Tab and Enter keyboard keys for the navigation.
         </div>
@@ -52,6 +53,17 @@
     protected ElementReference passInput;
     protected ElementReference confirmInput;
 
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += StateHasChanged;
+        await AppState.RefreshLogin();
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
+
     protected void ToggleMode()
     {
         isRegisterMode = !isRegisterMode;
@@ -59,7 +71,7 @@
         pass = "";
         passConfirm = "";
 
-        _ = FocusName();
+        _ = ResetFocus();
     }
 
     protected async Task ExecuteConfirm()
@@ -125,13 +137,12 @@
         if (e.Key == "Enter") ToggleMode();
     }
 
-    protected async Task ResetFocus()
+    async Task ResetFocus()
     {
-        await FocusName();
-    }
-
-    async Task FocusName()
-    {
-        await nameInput.FocusAsync();
+        try
+        {
+            if (nameInput.Context != null) await nameInput.FocusAsync();
+        }
+        catch { }
     }
 }

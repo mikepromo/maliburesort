@@ -1,7 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject AppState AppState
-@using System.Reflection
-@using static Version
+@inject NavigationManager nav
 
 <div class="main-container">
     <div class="screen">
@@ -20,7 +19,7 @@
                 <input @ref="cliInput" @bind="cliText" @bind:event="oninput" @onkeyup="HandleCliKeyDown"
                        class="cmd-input" placeholder="ENTER COMMAND" autocomplete="off"/>
             </div>
-    
+
             <div class="stat-line">
                 <span>
                     USER: <span class="text-amber">@AppState.Player?.Name.ToUpper()</span> &nbsp;|&nbsp; 
@@ -32,7 +31,7 @@
         else
         {
             <div class="stat-line" style="border: none;">
-                <span>CVER @VersionOf(Assembly.GetExecutingAssembly()) | SVER @AppState.ServerVersion</span>
+                <span>CVER @AppState.ClientVersion | SVER @AppState.ServerVersion</span>
                 <span>SYSTEM READY</span>
             </div>
         }
@@ -44,17 +43,24 @@
     protected ElementReference cliInput;
     string cliText = "";
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         AppState.OnChange += StateHasChanged;
         OnFocusCliRequested += FocusCli;
-    
-        if (!AppState.IsLoggedIn)
+    }
+
+    protected override void OnParametersSet()
+    {
+        bool isAtRoot = nav.Uri == nav.BaseUri || nav.Uri == nav.BaseUri + "/";
+
+        if (AppState.IsLoggedIn && isAtRoot)
         {
-            await AppState.LaunchAsync();
+            string target = !string.IsNullOrEmpty(AppState.Player?.CurrentTableId)
+                ? $"/game/{AppState.Player.CurrentTableId}"
+                : "/lobby";
+
+            nav.NavigateTo(target);
         }
-    
-        await AppState.GetServerVersion();
     }
 
     void FocusCli()

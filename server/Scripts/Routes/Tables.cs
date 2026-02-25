@@ -22,9 +22,9 @@ public static class Tables
 
 	public static async Task<IResult> GetTableState(string tableId, MainDbContext db)
 	{
-		GameStateDto? state = await db.Tables
+		GameBoardDto? state = await db.Tables
 			.Where(t => t.Id == tableId)
-			.Select(t => new GameStateDto
+			.Select(t => new GameBoardDto
 			{
 				table = new TableDto
 				{

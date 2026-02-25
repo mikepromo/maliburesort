@@ -1,21 +1,7 @@
-using System.Text.Json;
 using shared;
-
-public enum OutputType
-{
-	ClientInfo,
-	ClientError,
-	ClientException,
-	ServerError
-}
 
 partial class AppState
 {
-	public string LatestOutput { get; private set; } = "SYSTEM READY";
-	public OutputType OutputType { get; private set; }
-
-	public event Func<string, string[], Task>? OnCliInput;
-
 	public async Task DispatchCommand(string cliText)
 	{
 		if (string.IsNullOrWhiteSpace(cliText)) return;
@@ -82,67 +68,53 @@ partial class AppState
 				await CheckBalance();
 				break;
 
+
+
+
+			case "JOIN":
+				if (LobbyContext?.Tables != null && args.Length == 1)
+				{
+					TableDto? table = null;
+					string target = args[0];
+
+					if (int.TryParse(target, out int index) &&
+					    index > 0 && index <= LobbyContext.Tables.Count)
+					{
+						table = LobbyContext.Tables[index - 1];
+					}
+
+					if (table != null)
+					{
+						await JoinTable(table.Id);
+					}
+				}
+				break;
+			case "LOBBY":
+			case "HOME":
+			case "EXIT":
+			case "Q":
+				await LeaveTable();
+				break;
+
+
+
+
+			case "CHAT":
+			case "MSG":
+			case "C":
+				if (args.Length > 0)
+				{
+					string message = string.Join(" ", args);
+					await SendInChat(message);
+				}
+				break;
+
+
+
+
 			default:
-				if (OnCliInput != null)
-					await OnCliInput.Invoke(cmd, args);
+				Cerr("COMMAND UNRECOGNIZED");
 				break;
 		}
-	}
-
-	public void Cinf(string message)
-	{
-		PrintLine(message, OutputType.ClientInfo);
-	}
-
-	public void Cerr(string message)
-	{
-		PrintLine(message, OutputType.ClientError);
-	}
-
-	public void Cex(Exception ex)
-	{
-		PrintLine(ex.Message, OutputType.ClientException);
-	}
-
-	public void Serr(string message)
-	{
-		PrintLine(message, OutputType.ServerError);
-	}
-
-	public async Task Chttp(HttpResponseMessage response)
-	{
-		if (response.IsSuccessStatusCode) return;
-
-		string content = await response.Content.ReadAsStringAsync();
-
-		try
-		{
-			ErrorResponse? err = JsonSerializer.Deserialize<ErrorResponse>(content,
-				new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-			if (err?.Message != null)
-			{
-				Serr(err.Code != null ? $"[{err.Code}] :: {err.Message}" : err.Message);
-				return;
-			}
-		}
-		catch
-		{
-			//empty
-		}
-
-		string statusInfo = $"{(int)response.StatusCode} {response.StatusCode.ToString().ToUpper()}";
-
-		string summary = content.Length > 150 ? content[..150].Replace("\n", " ") + "..." : content;
-
-		Serr($"[HTTP {statusInfo}] :: {summary}");
-	}
-
-	void PrintLine(string message, OutputType type)
-	{
-		Console.WriteLine($"{type}: {message}");
-		LatestOutput = message.ToUpper();
-		OutputType = type;
-		Dirty();
 	}
 }

@@ -84,7 +84,7 @@ public class Program
 				}
 
 				options.AddPolicy(Routes.BILLING, context => GetIpPartition(context, 1));
-				options.AddPolicy(Routes.AUTH, context => GetIpPartition(context, 5));
+				options.AddPolicy(Routes.AUTH, context => GetIpPartition(context, 10));
 				options.AddPolicy(Routes.NORMAL, context => GetIpPartition(context, 100));
 			});
 		}

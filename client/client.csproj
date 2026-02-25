@@ -26,4 +26,24 @@
       <ProjectReference Include="..\shared\shared.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Pages\Game\Game.razor" />
+      <_ContentIncludedByDefault Remove="Pages\Game\GameBoard.razor" />
+      <_ContentIncludedByDefault Remove="Pages\Game\GameChat.razor" />
+      <_ContentIncludedByDefault Remove="Pages\Game\GameLdb.razor" />
+      <_ContentIncludedByDefault Remove="Pages\Lobby.razor" />
+      <_ContentIncludedByDefault Remove="Pages\Login.razor" />
+      <_ContentIncludedByDefault Remove="Layout\MainLayout.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="Razor\Layout\MainLayout.razor" />
+      <AdditionalFiles Include="Razor\Pages\Game\Game.razor" />
+      <AdditionalFiles Include="Razor\Pages\Game\GameBoard.razor" />
+      <AdditionalFiles Include="Razor\Pages\Game\GameChat.razor" />
+      <AdditionalFiles Include="Razor\Pages\Game\GameLdb.razor" />
+      <AdditionalFiles Include="Razor\Pages\Lobby.razor" />
+      <AdditionalFiles Include="Razor\Pages\Login.razor" />
+    </ItemGroup>
+
 </Project>

@@ -60,7 +60,7 @@ public class TableDto
 
 	public decimal MinBet => Tier.MinBet();
 	public decimal MaxBet => Tier.MaxBet();
-	public decimal MaxSeats => Tier.MaxSeats();
+	public int MaxSeats => Tier.MaxSeats();
 }
 
 public class GameBoardDto

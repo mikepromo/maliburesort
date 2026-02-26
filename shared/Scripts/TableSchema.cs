@@ -18,10 +18,10 @@ public static class TableSchema
 	{
 		return tier switch
 		{
-			TableTier.Tier1 => 100,
-			TableTier.Tier2 => 200,
-			TableTier.Tier3 => 300,
-			TableTier.Tier4 => 500,
+			TableTier.Tier1 => 1000,
+			TableTier.Tier2 => 2000,
+			TableTier.Tier3 => 3000,
+			TableTier.Tier4 => 5000,
 			_               => throw new ArgumentOutOfRangeException()
 		};
 	}

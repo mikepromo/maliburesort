@@ -5,41 +5,37 @@
 
 <div class="login-container">
     <div class="login-title">Malibu Resort</div>
-    <div class="login-subtitle">ROULETTE TERMINAL</div>
+    <div class="login-subtitle">🌴 ROULETTE TERMINAL</div>
 
     <div class="terminal-form">
-        <label class="login-label">@(isRegisterMode ? "CHOOSE IDENTIFIER" : "LOGIN NAME")</label>
+        <label class="login-label">Login Name</label>
         <input @ref="nameInput" @bind="name" @bind:event="oninput" @onkeydown="HandleNameKey"
                class="login-input" autocomplete="off" autofocus/>
 
-        <label class="login-label">PASSWORD</label>
+        <label class="login-label">Password</label>
         <input @ref="passInput" @bind="pass" @bind:event="oninput" @onkeydown="HandlePassKey"
                class="login-input" type="password"/>
 
         @if (isRegisterMode)
         {
-            <label class="login-label">CONFIRM PASSWORD</label>
+            <label class="login-label">Confirm Password</label>
             <input @ref="confirmInput" @bind="passConfirm" @bind:event="oninput" @onkeydown="HandleConfirmKey"
                    class="login-input" type="password"/>
         }
 
         <br/>
-        <button class="login-btn" @onclick="ExecuteConfirm">
-            @(isRegisterMode ? "INITIALIZE ID" : "AUTHENTICATE")
+        <button tabindex="0" class="login-btn" @onclick="ExecuteConfirm" @onkeydown="HandleBtnKey">
+            @(isRegisterMode ? "Register" : "Login")
         </button>
     </div>
 
-    <div class="login-links">
-        <div @onclick="ToggleMode" class="text-blue" style="cursor: pointer; text-decoration: underline;">
-            @(isRegisterMode ? "< BACK TO LOGIN" : ">> CREATE A NEW LOGIN")
-        </div>
-
-        <div style="margin-top: 20px; font-size: 13px; color: #444; font-weight: normal;">
-            Tip: Use Tab and Enter keyboard keys for the navigation.
-        </div>
+    <div tabindex="0" class="login-toggle" @onclick="ToggleMode" @onkeydown="HandleToggleKey">
+        👤 @(isRegisterMode ? "Back to Login" : "Create a New Login")
     </div>
 
-    <div tabindex="0" @onfocus="ResetFocus"></div>
+    <div style="margin-top: 20px; font-size: 13px; color: #444; font-weight: normal;">
+        Tip: Use Tab and Enter keyboard keys for navigation.
+    </div>
 </div>
 
 @code
@@ -55,13 +51,18 @@
 
     protected override async Task OnInitializedAsync()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
         await AppState.RefreshLogin();
+    }
+
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
     }
 
     protected void ToggleMode()
@@ -71,7 +72,7 @@
         pass = "";
         passConfirm = "";
 
-        _ = ResetFocus();
+        _ = nameInput.FocusAsync();
     }
 
     protected async Task ExecuteConfirm()
@@ -132,17 +133,13 @@
         if (e.Key == "Enter") await ExecuteConfirm();
     }
 
+    protected async Task HandleBtnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ExecuteConfirm();
+    }
+
     protected void HandleToggleKey(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") ToggleMode();
-    }
-
-    async Task ResetFocus()
-    {
-        try
-        {
-            if (nameInput.Context != null) await nameInput.FocusAsync();
-        }
-        catch { }
     }
 }

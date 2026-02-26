@@ -2,36 +2,37 @@
 @using shared
 @implements IDisposable
 
-
 <div class="roulette-container">
     <div class="board-status">
         @if (Board is null)
         {
-            //todo loading label
+            <div class="text-dim">SYNCING STATE...</div>
         }
-        else { }
-        <div><small class="text-dim">ASSET:</small> <br/> <b>@Board?.table.Name.ToUpper()</b></div>
-        <div><small class="text-dim">LAST RESULT:</small> <br/>
-            <b
-                class="text-amber">@(Board?.spinResult.WinningNumber?.ToString() ?? "--")</b></div>
-        <div style="margin-left: auto; text-align: right;">
-            <small class="text-dim">NEXT SPIN:</small> <br/>
-            <b class="@(_timeLeft < 5 ? "text-red blink" : "text-green")">@(_timeLeft)s</b>
-        </div>
+        else
+        {
+            <div><small class="text-dim">ASSET:</small><br/><b>@Board.table.Name.ToUpper()</b></div>
+            <div><small class="text-dim">LAST RESULT:</small><br/><b
+                    class="text-amber">@(Board.spinResult.WinningNumber?.ToString() ?? "--")</b></div>
+            <div style="margin-left: auto; text-align: right;">
+                <small class="text-dim">NEXT EXECUTION:</small><br/>
+                <b class="@(_timeLeft < 5 ? "text-red blink" : "text-green")">@(_timeLeft)s</b>
+            </div>
+        }
     </div>
 
     <div class="board-grid-wrapper">
-        <div class="cell @GetWinningClass(0)" style="width: 60px; border-color: var(--border);">
-            0 @RenderChips(0)
+        <div class="zero-node @GetWinningClass(0)">
+            <span>0</span>
+            @RenderPosition(0)
         </div>
 
-        <div style="display: grid; grid-template-rows: repeat(3, 1fr); grid-auto-flow: column; flex: 1; gap: 2px;">
+        <div class="matrix-grid">
             @for (int i = 1; i <= 36; i++)
             {
                 int n = i;
-                <div class="cell @GetWinningClass(n)">
-                    @n
-                    @RenderChips(n)
+                <div class="matrix-node @GetWinningClass(n)">
+                    <span>@n</span>
+                    @RenderPosition(n)
                 </div>
             }
         </div>
@@ -42,16 +43,20 @@
 {
     int _timeLeft;
     Timer? _timer;
-
     GameBoardDto? Board => AppState.GameContext?.Board;
 
     protected override void OnInitialized()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
         StartCountdown();
     }
 
-    RenderFragment RenderChips(int number) => __builder =>
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    RenderFragment RenderPosition(int number) => __builder =>
     {
         decimal total = Board?.Bets
             .Where(b => b.ChosenNumber == number && b.PlayerId == AppState.Player?.Id)
@@ -59,12 +64,12 @@
 
         if (total > 0)
         {
-            <div class="chip">@total.ToString("N0")</div>
+            <div class="bet-indicator">@total.ToString("N0")</div>
         }
     };
 
     string GetWinningClass(int n) =>
-        Board?.spinResult.WinningNumber == n ? "winner-highlight" : "";
+        Board?.spinResult.WinningNumber == n ? "node-winner" : "";
 
     private void StartCountdown()
     {
@@ -80,7 +85,7 @@
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
         _timer?.Dispose();
     }
 }

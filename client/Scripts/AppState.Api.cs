@@ -5,12 +5,12 @@ using shared;
 
 public partial class AppState
 {
-	public async Task GetServerVersion()
+	public async Task GetVersions()
 	{
 		VersionResponse? response = await http.GetFromJsonAsync<VersionResponse>("/version");
 		ServerVersion = response?.Version;
 
-		Version.VersionOf(Assembly.GetExecutingAssembly());
+		ClientVersion= Version.VersionOf(Assembly.GetExecutingAssembly());
 	}
 
 	public async Task SyncPlayer()
@@ -76,16 +76,7 @@ public partial class AppState
 				await ConnectHub();
 				Dirty();
 
-				if (!string.IsNullOrEmpty(Player.CurrentTableId))
-				{
-					Cinf($"SESSION RECOVERED.");
-					nav.NavigateTo($"/game/{Player.CurrentTableId}");
-				}
-				else
-				{
-					Cinf("SUCCESSFUL AUTHENTICATION.");
-					nav.NavigateTo("/lobby");
-				}
+				ReconcileURL();
 			}
 			else
 			{
@@ -119,8 +110,9 @@ public partial class AppState
 		}
 
 		Dirty();
-		nav.NavigateTo("/");
+
 		Cinf("SESSION TERMINATED. SYSTEM READY.");
+		ReconcileURL();
 	}
 
 	public async Task PlaceBet(int nmb, decimal amt)
@@ -138,8 +130,8 @@ public partial class AppState
 
 		if (res.IsSuccessStatusCode)
 		{
-			WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-			Cinf($"BET ACCEPTED. NEW BALANCE: USD {data?.Amount:N2}");
+			PlayerDto? data = await res.Content.ReadFromJsonAsync<PlayerDto>();
+			Cinf($"BET ACCEPTED. NEW BALANCE: USD {data?.Balance:N2}");
 		}
 		else
 		{
@@ -216,11 +208,10 @@ public partial class AppState
 		if (res.IsSuccessStatusCode)
 		{
 			Player!.CurrentTableId = tableId;
+			
+			await EnsureTableSubscription();
 
-			if (Hub.State == HubConnectionState.Connected)
-				await Hub.InvokeAsync(ServerRPC.SubscribeToTable, tableId);
-
-			nav.NavigateTo($"/game/{tableId}");
+			ReconcileURL();
 		}
 		else
 		{
@@ -245,10 +236,9 @@ public partial class AppState
 		{
 			Player.CurrentTableId = null;
 
-			if (Hub.State == HubConnectionState.Connected)
-				await Hub.InvokeAsync(ServerRPC.UnsubscribeFromTable, tableId);
+			await EnsureTableUnsubscription(tableId);
 
-			nav.NavigateTo("/lobby");
+			ReconcileURL();
 		}
 		else
 		{

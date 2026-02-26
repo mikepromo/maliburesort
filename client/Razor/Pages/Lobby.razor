@@ -1,46 +1,60 @@
 @page "/lobby"
-@using shared
 @inject AppState AppState
+@using System.Globalization
+@using shared
 @implements IDisposable
 
-<div class="terminal-window" style="height: 100%;">
-    <div class="terminal-header">NETWORK NODES / AVAILABLE TABLES</div>
-    <div style="padding: 10px; overflow-y: auto;">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead>
-            <tr style="color: #666; font-size: 11px; border-bottom: 1px solid #333;">
-                <th style="padding: 8px;">INDEX</th>
-                <th>TABLE NAME</th>
-                <th>TIER</th>
-                <th>CAPACITY</th>
-                <th style="text-align: right;">MIN BET</th>
-            </tr>
-            </thead>
-            <tbody>
-            @if (tables == null)
-            {
-                //todo: render loading
-            }
-            else
-            {
-                int idx = 1;
-                @foreach (TableDto t in tables)
+<div style="padding: 4px; background: #111; height: 100%;">
+    <div class="terminal-window" style="height: 100%;">
+        <div class="terminal-header alert">
+            AVAILABLE TABLES
+        </div>
+        
+        <div class="flex-fill" style="padding: 10px; overflow-y: auto;">
+            <table class="terminal-table">
+                <thead>
+                <tr>
+                    <th class="col-rank">INDEX</th>
+                    <th>TABLE NAME</th>
+                    <th class="col-right">MIN BET</th>
+                    <th class="col-right">MAX BET</th>
+                    <th class="col-center" style="width: 140px;">ONLINE</th>
+                    <th class="col-right">MAX CAPACITY</th>
+                </tr>
+                </thead>
+                <tbody>
+                @if (tables == null)
                 {
-                    <tr style="border-bottom: 1px solid #111; font-size: 14px;">
-                        <td style="padding: 8px; color: var(--amber);">@idx</td>
-                        <td style="font-weight: bold;">@t.Name.ToUpper()</td>
-                        <td><span style="color: #888;">[@t.Tier]</span></td>
-                        <td>@t.PlayerCount / @t.MaxSeats</td>
-                        <td style="text-align: right;" class="text-green">$@t.MinBet.ToString("N0")</td>
-                    </tr>
-                    idx++;
+                    <tr><td colspan="6" class="text-dim">LOADING ASSET DATA...</td></tr>
                 }
-            }
-            </tbody>
-        </table>
+                else
+                {
+                    int idx = 1;
+                    @foreach (TableDto t in tables)
+                    {
+                        double percent = t.MaxSeats > 0 ? (double)t.PlayerCount / t.MaxSeats * 100 : 0;
+                        <tr class="@(AppState.Player?.CurrentTableId == t.Id ? "row-active" : "")">
+                            <td class="col-rank text-amber" style="font-weight: bold;">[@idx]</td>
+                            <td class="text-blue" style="font-weight: bold;">@t.Name.ToUpper()</td>
+                            <td class="col-right">USD @t.MinBet.ToString("N0")</td>
+                            <td class="col-right">USD @t.MaxBet.ToString("N0")</td>
+                            <td class="col-center">
+                                <div class="dist-slider-container">
+                                    <div class="dist-line"></div>
+                                    <div class="dist-dot @GetLoadClass(percent)" style="left: @(percent.ToString("0.##", CultureInfo.InvariantCulture))%;"></div>
+                                </div>
+                            </td>
+                            <td class="col-right">@t.MaxSeats</td>
+                        </tr>
+                        idx++;
+                    }
+                }
+                </tbody>
+            </table>
 
-        <div style="margin-top: 20px; color: #444; font-size: 12px;">
-            >> USE 'JOIN [INDEX]' TO CONNECT TO A NODE
+            <div style="margin-top: 20px; color: #444; font-size: 12px; font-weight: bold;">
+                >> USE COMMAND 'J [INDEX]' TO JOIN A TABLE
+            </div>
         </div>
     </div>
 </div>
@@ -48,15 +62,28 @@
 @code
 {
     List<TableDto>? tables => AppState?.LobbyContext?.Tables;
-    
+
     protected override async Task OnInitializedAsync()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
         await AppState.RefreshLobby();
+    }
+
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    string GetLoadClass(double percent)
+    {
+        if (percent >= 100) return "dot-max";
+        if (percent >= 50) return "dot-high";
+        if (percent > 0) return "dot-med";
+        return "dot-low";
     }
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
     }
 }

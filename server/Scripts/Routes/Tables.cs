@@ -8,6 +8,7 @@ public static class Tables
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
 		List<TableDto> tables = await db.Tables
+			.Include(t=>t.Players)
 			.Select(t => new TableDto
 			{
 				Id = t.Id,
@@ -24,6 +25,7 @@ public static class Tables
 	{
 		GameBoardDto? state = await db.Tables
 			.Where(t => t.Id == tableId)
+			.Include(t=>t.Players)
 			.Select(t => new GameBoardDto
 			{
 				table = new TableDto
@@ -190,6 +192,6 @@ public static class Tables
 
 		await hub.Clients.User(bet.PlayerId).BalanceUpdate(bet.Player.Balance);
 
-		return Results.Ok(bet.Wrap());
+		return Results.Ok(bet.Player.Wrap());
 	}
 }

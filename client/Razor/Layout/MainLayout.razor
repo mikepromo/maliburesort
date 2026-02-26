@@ -1,10 +1,53 @@
 ﻿@inherits LayoutComponentBase
 @inject AppState AppState
-@inject NavigationManager nav
 
 <div class="main-container">
     <div class="screen">
         @Body
+
+        @if (AppState.IsHelpMenuOpen)
+        {
+            <div class="help-overlay" @onclick="CloseHelp" @onkeydown="HandleHelpKey" tabindex="0" @ref="helpOverlay">
+                <div class="help-modal">
+                    <div class="help-header">
+                        <span><span class="text-blue" style="font-weight: bold;">🏠 Malibu Resort </span> > Terminal Operations</span>
+                        <span style="cursor: default;">&lt;Cancel&gt; X</span>
+                    </div>
+
+                    <div class="help-columns">
+                        <div class="help-col">
+                            <div class="help-category">1) Session ></div>
+                            <div class="help-item"><span class="help-item-num">2)</span> <span
+                                    class="help-item-code">SD</span> <span class="help-item-desc">Secure Logout</span>
+                            </div>
+                            <div class="help-item"><span class="help-item-num">3)</span> <span class="help-item-code">BAL</span>
+                                <span class="help-item-desc">Audit Account Balance</span></div>
+
+                            <div class="help-category">4) Capital ></div>
+                            <div class="help-item"><span class="help-item-num">5)</span> <span class="help-item-code">DP [AMT]</span>
+                                <span class="help-item-desc">Deposit Funds</span></div>
+                            <div class="help-item"><span class="help-item-num">6)</span> <span class="help-item-code">WD [AMT]</span>
+                                <span class="help-item-desc">Withdraw Funds</span></div>
+                        </div>
+
+                        <div class="help-col">
+                            <div class="help-category">7) Network Nodes ></div>
+                            <div class="help-item"><span class="help-item-num">8)</span> <span class="help-item-code">J [ID]</span>
+                                <span class="help-item-desc">Join Table</span></div>
+                            <div class="help-item"><span class="help-item-num">9)</span> <span
+                                    class="help-item-code">Q</span> <span class="help-item-desc">Leave Table & Return to Lobby</span>
+                            </div>
+                            <div class="help-item"><span class="help-item-num">10)</span> <span class="help-item-code">C [MSG]</span>
+                                <span class="help-item-desc">Broadcast Chat Message</span></div>
+
+                            <div class="help-category">11) Execution ></div>
+                            <div class="help-item"><span class="help-item-num">12)</span> <span class="help-item-code">B [0-36] [AMT]</span>
+                                <span class="help-item-desc">Execute Roulette Bet</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 
     <div class="output-line @OutputCssClass">
@@ -15,60 +58,101 @@
         @if (AppState.IsLoggedIn)
         {
             <div class="cmd-line">
-                <span>/</span>
+                <span style="display: flex; gap: 10px;  font-weight: bolder;">/ </span>
                 <input @ref="cliInput" @bind="cliText" @bind:event="oninput" @onkeyup="HandleCliKeyDown"
-                       class="cmd-input" placeholder="ENTER COMMAND" autocomplete="off"/>
+                       class="cmd-input" placeholder="ENTER COMMAND (<HELP> TO LIST ALL)" autocomplete="off"
+                       disabled="@AppState.IsHelpMenuOpen"/>
             </div>
+        }
 
-            <div class="stat-line">
-                <span>
-                    USER: <span class="text-amber">@AppState.Player?.Name.ToUpper()</span> &nbsp;|&nbsp; 
-                    BAL: <span class="text-green">USD @AppState.Player?.Balance.ToString("N2")</span>
-                </span>
-                <span>MALIBU TERMINAL v1.0</span>
-            </div>
-        }
-        else
-        {
-            <div class="stat-line" style="border: none;">
-                <span>CVER @AppState.ClientVersion | SVER @AppState.ServerVersion</span>
-                <span>SYSTEM READY</span>
-            </div>
-        }
+        <div class="stat-line" style="@(AppState.IsLoggedIn ? "" : "border-top: none;")">
+
+            <span><span class="text-dim">CVER:</span> <span class="text-dim">@AppState.ClientVersion</span> <span
+                    class="text-dim">| SVER:</span> <span class="text-dim">@AppState.ServerVersion</span></span>
+
+
+            <span style="display: flex; gap: 20px; align-items: center; font-weight: bold; color: #fff;">
+                @if (AppState.IsInGame)
+                {
+                    <span><span class="text-dim">TABLE:</span> <span class="text-blue">@ShortTableId</span></span>
+                }
+
+                @if (AppState.IsLoggedIn)
+                {
+                    <span><span class="text-dim">USER:</span> <span
+                            class="text-amber">@AppState.Player?.Name.ToUpper()</span></span>
+                    <span><span class="text-dim">BAL:</span> <span
+                            class="text-green">USD @(AppState.Player?.Balance.ToString("N2"))</span></span>
+                }
+
+            </span>
+        </div>
     </div>
 </div>
 
 @code
 {
     protected ElementReference cliInput;
+    protected ElementReference helpOverlay;
     string cliText = "";
+
+    string ShortTableId
+    {
+        get
+        {
+            string? id = AppState.Player?.CurrentTableId ?? AppState.GameContext?.Board?.table.Id;
+            if (string.IsNullOrEmpty(id)) return "N/A";
+            return id.Length > 8 ? id.Substring(0, 8).ToUpper() : id.ToUpper();
+        }
+    }
 
     protected override void OnInitialized()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
         OnFocusCliRequested += FocusCli;
+    }
+
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (AppState.IsHelpMenuOpen && helpOverlay.Context != null)
+        {
+            try
+            {
+                await helpOverlay.FocusAsync();
+            }
+            catch { }
+        }
     }
 
     protected override void OnParametersSet()
     {
-        bool isAtRoot = nav.Uri == nav.BaseUri || nav.Uri == nav.BaseUri + "/";
-
-        if (AppState.IsLoggedIn && isAtRoot)
-        {
-            string target = !string.IsNullOrEmpty(AppState.Player?.CurrentTableId)
-                ? $"/game/{AppState.Player.CurrentTableId}"
-                : "/lobby";
-
-            nav.NavigateTo(target);
-        }
+        AppState.ReconcileURL();
     }
 
     void FocusCli()
     {
-        if (cliInput.Context != null)
+        if (cliInput.Context != null && !AppState.IsHelpMenuOpen)
         {
             _ = cliInput.FocusAsync();
         }
+    }
+
+    async Task HandleHelpKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Tab") return;
+        await CloseHelp();
+    }
+
+    async Task CloseHelp()
+    {
+        AppState.CloseHelp();
+        await Task.Delay(50);
+        RequestCliFocus();
     }
 
     protected async Task HandleCliKeyDown(KeyboardEventArgs e)
@@ -107,6 +191,6 @@
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
     }
 }

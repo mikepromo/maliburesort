@@ -2,6 +2,14 @@ using shared;
 
 partial class AppState
 {
+	public bool IsHelpMenuOpen { get; private set; }
+
+	public void CloseHelp()
+	{
+		IsHelpMenuOpen = false;
+		Dirty();
+	}
+
 	public async Task DispatchCommand(string cliText)
 	{
 		if (string.IsNullOrWhiteSpace(cliText)) return;
@@ -13,14 +21,22 @@ partial class AppState
 
 		switch (cmd)
 		{
+			case "HELP":
+			case "?":
+				IsHelpMenuOpen = true;
+				Dirty();
+				break;
+
+
 			case "LOGOUT":
+			case "SHUTDOWN":
 			case "SD":
 				await Logout();
 				break;
-			case "RELOAD":
-			case "REFRESH":
-				nav.NavigateTo(nav.Uri, true);
-				break;
+
+
+
+
 			case "BET":
 			case "B":
 				if (args.Length == 2)
@@ -35,6 +51,10 @@ partial class AppState
 					Cerr("INVALID BET ARGS. USAGE: BET <0-36> <AMT>");
 				}
 				break;
+
+
+
+
 			case "DEPOSIT":
 			case "DP":
 				if (args.Length == 1)
@@ -72,6 +92,7 @@ partial class AppState
 
 
 			case "JOIN":
+			case "J":
 				if (LobbyContext?.Tables != null && args.Length == 1)
 				{
 					TableDto? table = null;

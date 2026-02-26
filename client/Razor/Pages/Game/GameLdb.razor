@@ -2,35 +2,40 @@
 @using shared
 @implements IDisposable
 
-<div class="terminal-window">
-    <table>
+<div class="terminal-window" style="height: 100%; overflow-y: auto;">
+    <table class="terminal-table">
         <thead>
         <tr>
-            <th>Identifier</th>
-            <th style="text-align: right;">Net Profit</th>
+            <th class="col-rank">RANK</th>
+            <th>NAME</th>
+            <th class="col-right">NET PROFIT</th>
         </tr>
         </thead>
         <tbody>
         @if (Ldb == null)
         {
-            //todo loading label
+            <tr><td colspan="3" class="text-dim">SYNCING LEDGER...</td></tr>
         }
         else if (Ldb.Count == 0)
         {
-            //todo no record label
+            <tr><td colspan="3" class="text-dim">NO MARKET DATA</td></tr>
         }
         else
         {
+            int rank = 1;
             foreach (LdbEntryDto entry in Ldb)
             {
                 bool isSelf = entry.PlayerId == Player?.Id;
-                <tr style="background: @(isSelf ? "var(--bg-active)" : "transparent")">
-                    <td class="@(isSelf ? "text-amber" : "")">@(isSelf ? "> " : "")@entry.PlayerName.ToUpper()</td>
-                    <td style="text-align: right; font-weight: bold;"
-                        class="@(entry.NetProfit >= 0 ? "text-green" : "text-red")">
+                <tr class="@(isSelf ? "row-active" : "")">
+                    <td class="col-rank">@rank)</td>
+                    <td style="font-weight: bold;" class="@(isSelf ? "text-amber" : "text-blue")">
+                        @entry.PlayerName.ToUpper()
+                    </td>
+                    <td class="col-right" style="font-weight: bold; color: @(entry.NetProfit >= 0 ? "var(--green)" : "var(--red)")">
                         @(entry.NetProfit > 0 ? "+" : "")@entry.NetProfit.ToString("N2")
                     </td>
                 </tr>
+                rank++;
             }
         }
         </tbody>
@@ -41,13 +46,19 @@
 {
     List<LdbEntryDto>? Ldb => AppState.GameContext?.Ldb;
     PlayerDto? Player => AppState.Player;
+
     protected override void OnInitialized()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
+    }
+
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
     }
 }

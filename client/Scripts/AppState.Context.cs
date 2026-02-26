@@ -87,6 +87,8 @@ partial class AppState
 	public PlayerDto? Player { get; private set; }
 	public LobbyContext? LobbyContext { get; private set; }
 	public GameContext? GameContext { get; private set; }
+	
+	public bool IsInGame => !string.IsNullOrEmpty(Player?.CurrentTableId);
 
 	public async Task RefreshLogin()
 	{

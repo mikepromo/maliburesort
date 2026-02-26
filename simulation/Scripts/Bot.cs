@@ -53,12 +53,12 @@ public class Bot
 			{
 				await Bet(tableId);
 			}
-			else
-			{
-				if (_rng.NextDouble() > 0.7)
-					await _http.PostAsJsonAsync($"/tables/{tableId}/chat",
-						new SendChatRequest("Just watching this round."));
-			}
+			// else
+			// {
+			// 	if (_rng.NextDouble() > 0.7)
+			// 		await _http.PostAsJsonAsync($"/tables/{tableId}/chat",
+			// 			new SendChatRequest("Just watching this round."));
+			// }
 
 			await Task.Delay(_rng.Next(5000, 12000));
 		}
@@ -85,9 +85,9 @@ public class Bot
 
 		Console.WriteLine($"Betting on {number}!");
 
-		if (_rng.NextDouble() > 0.8)
+		// if (_rng.NextDouble() > 0.8)
 		{
-			await _http.PostAsJsonAsync($"/tables/{tableId}/chat", new SendChatRequest($"Betting on {number}!"));
+			await _http.PostAsJsonAsync($"/tables/{tableId}/chat", new SendChatRequest($"Betting USD {amount} on {number}!"));
 		}
 	}
 }

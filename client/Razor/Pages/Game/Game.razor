@@ -2,24 +2,24 @@
 @inject AppState AppState
 @implements IDisposable
 
-<div style="display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 1fr 250px; height: 100%; gap: 4px;">
+<div style="display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 280px; height: 100%; gap: 8px; padding: 8px; background: #111;">
 
-    <div class="terminal-window" style="grid-row: 1;">
-        <div class="terminal-header">ROULETTE TABLE ENGINE</div>
+    <div class="terminal-window" style="grid-row: 1; grid-column: 1;">
+        <div class="terminal-header alert">1) ROULETTE TABLE</div>
         <div class="flex-fill">
             <GameBoard/>
         </div>
     </div>
 
-    <div class="terminal-window" style="grid-row: 2;">
-        <div class="terminal-header">COMMUNICATIONS</div>
+    <div class="terminal-window" style="grid-row: 2; grid-column: 1;">
+        <div class="terminal-header alert">2) CHAT</div>
         <div class="flex-fill">
             <GameChat/>
         </div>
     </div>
 
     <div class="terminal-window" style="grid-column: 2; grid-row: 1 / span 2;">
-        <div class="terminal-header">NETWORK PERFORMANCE (LDB)</div>
+        <div class="terminal-header alert">3) PERFORMANCE LEADERBOARD</div>
         <div class="flex-fill">
             <GameLdb/>
         </div>
@@ -33,12 +33,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
         await AppState.RefreshGame(TableId);
+    }
+
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
     }
 }

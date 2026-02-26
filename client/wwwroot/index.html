@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>client</title>
+    <title>Malibu Resort</title>
     <base href="/"/>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌴</text></svg>">
@@ -51,6 +51,29 @@
         }
     });
 </script>
+
+<script>
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Tab') {
+            var focusable = Array.from(document.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])'))
+                .filter(el => !el.disabled && el.offsetParent !== null);
+
+            if (focusable.length === 0) return;
+
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    });
+</script>
+
 
 <script>
     window.getSelectionStart = (el) => el.selectionStart;

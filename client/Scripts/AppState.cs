@@ -10,8 +10,25 @@ public partial class AppState(HttpClient http, NavigationManager nav, IJSRuntime
 
 	public async Task LaunchAsync()
 	{
-		await GetServerVersion();
+		await GetVersions();
 		await RestoreSession();
+	}
+
+	public void ReconcileURL(bool force = false)
+	{
+		string target;
+
+		if (!IsLoggedIn)
+			target = "/";
+		else if (IsInGame)
+			target = $"/game/{Player!.CurrentTableId}";
+		else
+			target = "/lobby";
+		
+		if (force || nav.Uri != nav.BaseUri + target.TrimStart('/'))
+		{
+			nav.NavigateTo(target);
+		}
 	}
 
 	void Dirty()

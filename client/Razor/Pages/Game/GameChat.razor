@@ -1,29 +1,28 @@
 @inject AppState AppState
+@inject IJSRuntime JS
 @using shared
 @implements IDisposable
 
-<div class="chat-stream">
-    @if (Chat == null)
+<div class="chat-stream" id="chatStream">
+    @if (Chat != null)
     {
-        //todo loading label
-    }
-    else if (Chat.Count == 0)
-    {
-        //todo no record label
-    }
-    else
-    {
-        foreach (ChatMessageDto m in Chat)
+        @foreach (ChatMessageDto m in Chat)
         {
             bool isSelf = m.PlayerId == Player?.Id;
             <div class="chat-row">
-                <span class="text-dim">[@m.SentAt.ToString("HH:mm")]</span>
-                <span style="color: @(isSelf ? "var(--amber)" : "var(--blue)"); font-weight: bold; min-width: 80px;">
-                    @m.PlayerName.ToUpper():
-                </span>
-                <span style="color: #ccc; word-break: break-all;">@m.Message</span>
+                <div class="chat-author" style="color: @(isSelf ? "var(--amber)" : "var(--blue)")">
+                    @m.PlayerName.ToUpper()
+                </div>
+                <div class="chat-body">
+                    <span class="chat-time">@m.SentAt.ToString("HH:mm:ss")</span>
+                    <span class="chat-text">@m.Message</span>
+                </div>
             </div>
         }
+    }
+    else
+    {
+        <div class="text-dim">INITIALIZING COMM LINK...</div>
     }
 </div>
 
@@ -34,11 +33,17 @@
 
     protected override void OnInitialized()
     {
-        AppState.OnChange += StateHasChanged;
+        AppState.OnChange += HandleStateChange;
+    }
+
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
+        _ = JS.InvokeVoidAsync("eval", "var e = document.getElementById('chatStream'); if(e) e.scrollTop = e.scrollHeight;");
     }
 
     public void Dispose()
     {
-        AppState.OnChange -= StateHasChanged;
+        AppState.OnChange -= HandleStateChange;
     }
 }

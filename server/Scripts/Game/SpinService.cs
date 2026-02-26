@@ -21,7 +21,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			await RemoveIdlePlayers(table.Id, db);
 
 			int winningNumber = Random.Shared.Next(0, 37);
-			await ProcessSpin(table.Id, db, winningNumber);
+			await ProcessSpin(table.Id, db, 1);
 		}
 	}
 

@@ -12,10 +12,18 @@ public class LobbyContext(HttpClient http) : IRazorContext
 
 	public async Task Load()
 	{
-		HttpResponseMessage res = await http.GetAsync("/tables");
-		if (res.IsSuccessStatusCode)
+		try
 		{
-			Tables = await res.Content.ReadFromJsonAsync<List<TableDto>>();
+			HttpResponseMessage res = await http.GetAsync("/tables");
+
+			if (res.IsSuccessStatusCode)
+			{
+				Tables = await res.Content.ReadFromJsonAsync<List<TableDto>>();
+			}
+		}
+		catch (Exception e)
+		{
+			//empty
 		}
 	}
 }
@@ -28,17 +36,24 @@ public class GameContext(HttpClient http, string tableId) : IRazorContext
 
 	public async Task Load()
 	{
-		HttpResponseMessage stateRes = await http.GetAsync($"/tables/{tableId}/state");
-		if (stateRes.IsSuccessStatusCode)
+		try
 		{
-			Board = await stateRes.Content.ReadFromJsonAsync<GameBoardDto>();
-		}
+			HttpResponseMessage stateRes = await http.GetAsync($"/tables/{tableId}/state");
+			if (stateRes.IsSuccessStatusCode)
+			{
+				Board = await stateRes.Content.ReadFromJsonAsync<GameBoardDto>();
+			}
 
-		HttpResponseMessage chatRes = await http.GetAsync($"/tables/{tableId}/chat");
-		if (chatRes.IsSuccessStatusCode)
+			HttpResponseMessage chatRes = await http.GetAsync($"/tables/{tableId}/chat");
+			if (chatRes.IsSuccessStatusCode)
+			{
+				List<ChatMessageDto>? history = await chatRes.Content.ReadFromJsonAsync<List<ChatMessageDto>>();
+				history?.ForEach(HandleNewMsg);
+			}
+		}
+		catch (Exception e)
 		{
-			List<ChatMessageDto>? history = await chatRes.Content.ReadFromJsonAsync<List<ChatMessageDto>>();
-			history?.ForEach(HandleNewMsg);
+			//empty
 		}
 
 		await FetchLdb();
@@ -46,10 +61,17 @@ public class GameContext(HttpClient http, string tableId) : IRazorContext
 
 	public async Task FetchLdb()
 	{
-		HttpResponseMessage ldbRes = await http.GetAsync($"/tables/{tableId}/leaderboard");
-		if (ldbRes.IsSuccessStatusCode)
+		try
 		{
-			Ldb = await ldbRes.Content.ReadFromJsonAsync<List<LdbEntryDto>>();
+			HttpResponseMessage ldbRes = await http.GetAsync($"/tables/{tableId}/leaderboard");
+			if (ldbRes.IsSuccessStatusCode)
+			{
+				Ldb = await ldbRes.Content.ReadFromJsonAsync<List<LdbEntryDto>>();
+			}
+		}
+		catch (Exception e)
+		{
+			//empty
 		}
 	}
 
@@ -87,7 +109,7 @@ partial class AppState
 	public PlayerDto? Player { get; private set; }
 	public LobbyContext? LobbyContext { get; private set; }
 	public GameContext? GameContext { get; private set; }
-	
+
 	public bool IsInGame => !string.IsNullOrEmpty(Player?.CurrentTableId);
 
 	public async Task RefreshLogin()

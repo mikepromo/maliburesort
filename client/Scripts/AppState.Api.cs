@@ -1,30 +1,43 @@
 using System.Net.Http.Json;
 using System.Reflection;
-using Microsoft.AspNetCore.SignalR.Client;
 using shared;
 
 public partial class AppState
 {
 	public async Task GetVersions()
 	{
-		VersionResponse? response = await http.GetFromJsonAsync<VersionResponse>("/version");
-		ServerVersion = response?.Version;
+		try
+		{
+			VersionResponse? response = await http.GetFromJsonAsync<VersionResponse>("/version");
+			ServerVersion = response?.Version;
 
-		ClientVersion= Version.VersionOf(Assembly.GetExecutingAssembly());
+			ClientVersion = Version.VersionOf(Assembly.GetExecutingAssembly());
+		}
+		catch (Exception e)
+		{
+			Cex(e);
+		}
 	}
 
 	public async Task SyncPlayer()
 	{
-		HttpResponseMessage res = await http.GetAsync("/players/me");
-		if (res.IsSuccessStatusCode)
+		try
 		{
-			Player = await res.Content.ReadFromJsonAsync<PlayerDto>();
-			Dirty();
-			Cinf($"[SYS] IDENTITY RESTORED: {Player?.Name.ToUpper()}");
+			HttpResponseMessage res = await http.GetAsync("/players/me");
+			if (res.IsSuccessStatusCode)
+			{
+				Player = await res.Content.ReadFromJsonAsync<PlayerDto>();
+				Dirty();
+				Cinf($"[SYS] IDENTITY RESTORED: {Player?.Name.ToUpper()}");
+			}
+			else
+			{
+				await ClearJWT();
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			await ClearJWT();
+			Cex(e);
 		}
 	}
 
@@ -98,7 +111,14 @@ public partial class AppState
 			await LeaveTable();
 		}
 
-		await http.PostAsJsonAsync("/auth/logout", new { });
+		try
+		{
+			await http.PostAsJsonAsync("/auth/logout", new { });
+		}
+		catch (Exception e)
+		{
+			Cex(e);
+		}
 
 		await ClearJWT();
 
@@ -125,17 +145,24 @@ public partial class AppState
 
 		Cinf($"PROCESSING BET: USD {amt:N2} ON NUMBER {nmb}...");
 
-		HttpResponseMessage res =
-			await http.PostAsJsonAsync($"/tables/{Player.CurrentTableId}/bet", new PlaceBetRequest(nmb, amt));
+		try
+		{
+			HttpResponseMessage res =
+				await http.PostAsJsonAsync($"/tables/{Player.CurrentTableId}/bet", new PlaceBetRequest(nmb, amt));
 
-		if (res.IsSuccessStatusCode)
-		{
-			PlayerDto? data = await res.Content.ReadFromJsonAsync<PlayerDto>();
-			Cinf($"BET ACCEPTED. NEW BALANCE: USD {data?.Balance:N2}");
+			if (res.IsSuccessStatusCode)
+			{
+				PlayerDto? data = await res.Content.ReadFromJsonAsync<PlayerDto>();
+				Cinf($"BET ACCEPTED. NEW BALANCE: USD {data?.Balance:N2}");
+			}
+			else
+			{
+				await Chttp(res);
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			await Chttp(res);
+			Cex(e);
 		}
 	}
 
@@ -143,16 +170,23 @@ public partial class AppState
 	{
 		Cinf($"PROCESSING DEPOSIT: USD {amount:N2}...");
 
-		HttpResponseMessage res = await http.PostAsJsonAsync("/players/deposit", new WalletTransaction(amount));
+		try
+		{
+			HttpResponseMessage res = await http.PostAsJsonAsync("/players/deposit", new WalletTransaction(amount));
 
-		if (res.IsSuccessStatusCode)
-		{
-			WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-			Cinf($"DEPOSIT APPROVED. NEW BALANCE: USD {data?.Amount:N2}");
+			if (res.IsSuccessStatusCode)
+			{
+				WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
+				Cinf($"DEPOSIT APPROVED. NEW BALANCE: USD {data?.Amount:N2}");
+			}
+			else
+			{
+				await Chttp(res);
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			await Chttp(res);
+			Cex(e);
 		}
 	}
 
@@ -160,37 +194,52 @@ public partial class AppState
 	{
 		Cinf($"PROCESSING WITHDRAWAL: USD {amount:N2}...");
 
-		HttpResponseMessage res = await http.PostAsJsonAsync("/players/withdraw", new WalletTransaction(amount));
+		try
+		{
+			HttpResponseMessage res = await http.PostAsJsonAsync("/players/withdraw", new WalletTransaction(amount));
 
-		if (res.IsSuccessStatusCode)
-		{
-			WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-			Cinf($"WITHDRAWAL APPROVED. NEW BALANCE: USD {data?.Amount:N2}");
+			if (res.IsSuccessStatusCode)
+			{
+				WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
+				Cinf($"WITHDRAWAL APPROVED. NEW BALANCE: USD {data?.Amount:N2}");
+			}
+			else
+			{
+				await Chttp(res);
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			await Chttp(res);
+			Cex(e);
 		}
 	}
 
 	public async Task CheckBalance()
 	{
 		Cinf("FETCHING ACCOUNT BALANCE...");
-		HttpResponseMessage res = await http.GetAsync("/players/balance");
 
-		if (res.IsSuccessStatusCode)
+		try
 		{
-			WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-			if (data != null && Player != null)
+			HttpResponseMessage res = await http.GetAsync("/players/balance");
+
+			if (res.IsSuccessStatusCode)
 			{
-				Player.Balance = data.Amount;
-				Dirty();
-				Cinf($"ACCOUNT BALANCE: USD {data.Amount:N2}");
+				WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
+				if (data != null && Player != null)
+				{
+					Player.Balance = data.Amount;
+					Dirty();
+					Cinf($"ACCOUNT BALANCE: USD {data.Amount:N2}");
+				}
+			}
+			else
+			{
+				await Chttp(res);
 			}
 		}
-		else
+		catch (Exception e)
 		{
-			await Chttp(res);
+			Cex(e);
 		}
 	}
 
@@ -203,19 +252,27 @@ public partial class AppState
 		}
 
 		Cinf($"JOINING TABLE {tableId}...");
-		HttpResponseMessage res = await http.PostAsJsonAsync($"/tables/{tableId}/join", new { });
 
-		if (res.IsSuccessStatusCode)
+		try
 		{
-			Player!.CurrentTableId = tableId;
-			
-			await EnsureTableSubscription();
+			HttpResponseMessage res = await http.PostAsJsonAsync($"/tables/{tableId}/join", new { });
 
-			ReconcileURL();
+			if (res.IsSuccessStatusCode)
+			{
+				Player!.CurrentTableId = tableId;
+
+				await EnsureTableSubscription();
+
+				ReconcileURL();
+			}
+			else
+			{
+				await Chttp(res);
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			await Chttp(res);
+			Cex(e);
 		}
 	}
 
@@ -230,19 +287,26 @@ public partial class AppState
 		string tableId = Player.CurrentTableId;
 		Cinf("LEAVING TABLE...");
 
-		HttpResponseMessage res = await http.PostAsJsonAsync($"/tables/{tableId}/leave", new { });
-
-		if (res.IsSuccessStatusCode)
+		try
 		{
-			Player.CurrentTableId = null;
+			HttpResponseMessage res = await http.PostAsJsonAsync($"/tables/{tableId}/leave", new { });
 
-			await EnsureTableUnsubscription(tableId);
+			if (res.IsSuccessStatusCode)
+			{
+				Player.CurrentTableId = null;
 
-			ReconcileURL();
+				await EnsureTableUnsubscription(tableId);
+
+				ReconcileURL();
+			}
+			else
+			{
+				await Chttp(res);
+			}
 		}
-		else
+		catch (Exception e)
 		{
-			await Chttp(res);
+			Cex(e);
 		}
 	}
 
@@ -259,10 +323,17 @@ public partial class AppState
 		if (message.Length > 280)
 			message = message[..280];
 
-		HttpResponseMessage res =
-			await http.PostAsJsonAsync($"/tables/{Player.CurrentTableId}/chat", new SendChatRequest(message));
-
-		if (!res.IsSuccessStatusCode)
-			await Chttp(res);
+		try
+		{
+			HttpResponseMessage res =
+				await http.PostAsJsonAsync($"/tables/{Player.CurrentTableId}/chat", new SendChatRequest(message));
+			
+			if (!res.IsSuccessStatusCode)
+				await Chttp(res);
+		}
+		catch (Exception e)
+		{
+			Cex(e);
+		}
 	}
 }

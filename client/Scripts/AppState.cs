@@ -24,7 +24,7 @@ public partial class AppState(HttpClient http, NavigationManager nav, IJSRuntime
 			target = $"/game/{Player!.CurrentTableId}";
 		else
 			target = "/lobby";
-		
+
 		if (force || nav.Uri != nav.BaseUri + target.TrimStart('/'))
 		{
 			nav.NavigateTo(target);

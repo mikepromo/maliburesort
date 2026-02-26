@@ -1,3 +1,4 @@
+using System.Globalization;
 using shared;
 
 partial class AppState
@@ -41,7 +42,7 @@ partial class AppState
 			case "B":
 				if (args.Length == 2)
 				{
-					if (int.TryParse(args[0], out int nmb) && decimal.TryParse(args[1], out decimal amt))
+					if (int.TryParse(args[0], out int nmb) && decimal.TryParse(args[1], NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amt))
 					{
 						await PlaceBet(nmb, amt);
 					}
@@ -59,7 +60,7 @@ partial class AppState
 			case "DP":
 				if (args.Length == 1)
 				{
-					if (decimal.TryParse(args[0], out decimal amt))
+					if (decimal.TryParse(args[0],  NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amt))
 					{
 						await Deposit(amt);
 					}
@@ -73,7 +74,7 @@ partial class AppState
 			case "WD":
 				if (args.Length == 1)
 				{
-					if (decimal.TryParse(args[0], out decimal amt))
+					if (decimal.TryParse(args[0], NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amt))
 					{
 						await Withdraw(amt);
 					}

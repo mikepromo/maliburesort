@@ -27,7 +27,15 @@ public partial class AppState
 
 	async Task<string?> GetJwt()
 	{
-		return await jsRuntime.InvokeAsync<string?>("storageGet", "malibu_jwt");
+		try
+		{
+			return await jsRuntime.InvokeAsync<string?>("storageGet", "malibu_jwt");
+		}
+		catch (Exception ex)
+		{
+			Cex(ex);
+			return null;
+		}
 	}
 
 	async Task SetJWT(string jwt)
@@ -35,7 +43,14 @@ public partial class AppState
 		Jwt = jwt;
 		http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Jwt);
 
-		await jsRuntime.InvokeVoidAsync("storageSet", "malibu_jwt", Jwt);
+		try
+		{
+			await jsRuntime.InvokeVoidAsync("storageSet", "malibu_jwt", Jwt);
+		}
+		catch (Exception ex)
+		{
+			Cex(ex);
+		}
 	}
 
 	public async Task ClearJWT()
@@ -43,6 +58,14 @@ public partial class AppState
 		Jwt = null;
 		Player = null;
 		http.DefaultRequestHeaders.Authorization = null;
-		await jsRuntime.InvokeVoidAsync("storageRemove", "malibu_jwt");
+
+		try
+		{
+			await jsRuntime.InvokeVoidAsync("storageRemove", "malibu_jwt");
+		}
+		catch (Exception ex)
+		{
+			Cex(ex);
+		}
 	}
 }

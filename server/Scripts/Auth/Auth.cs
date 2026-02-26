@@ -24,7 +24,7 @@ public static partial class Auth
 		if (nameError != null)
 			return Results.Conflict(nameError.Err());
 
-		string? passError = Validation.IsValidPass(request.Name);
+		string? passError = Validation.IsValidPass(request.Pass);
 		if (passError != null)
 			return Results.Conflict(passError.Err());
 

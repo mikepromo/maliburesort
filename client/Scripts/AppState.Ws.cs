@@ -4,19 +4,22 @@ using shared;
 partial class AppState
 {
 	HubConnection? _hub;
-	public HubConnection Hub => _hub!;
 	string? _activeSubscribedTableId;
 
 	async Task ConnectHub()
 	{
+		if (_hub != null)
+		{
+			if (_hub.State != HubConnectionState.Disconnected) return;
+			await _hub.DisposeAsync();
+		}
+		
 		string hubUrl = http.BaseAddress!.ToString().TrimEnd('/') + "/hubs/game";
 
 		_hub = new HubConnectionBuilder()
 			.WithUrl($"{hubUrl}?access_token={Jwt}")
 			.WithAutomaticReconnect()
 			.Build();
-
-
 
 		_hub.On<decimal>(nameof(IGameClient.BalanceUpdate), bal => { Player!.Balance = bal; });
 

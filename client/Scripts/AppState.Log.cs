@@ -38,6 +38,14 @@ partial class AppState
 	{
 		if (response.IsSuccessStatusCode) return;
 
+		if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+		{
+			Serr("[SYS] SESSION EXPIRED. PLEASE RE-AUTHENTICATE.");
+			await ClearJWT();
+			ReconcileURL(true);
+			return;
+		}
+		
 		string content = await response.Content.ReadAsStringAsync();
 
 		try

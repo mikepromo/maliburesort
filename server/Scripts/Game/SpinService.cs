@@ -20,17 +20,18 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 
 			await RemoveIdlePlayers(table.Id, db);
 
-			int winningNumber = Random.Shared.Next(0, 37);
-			await ProcessSpin(table.Id, db, winningNumber);
+			await ProcessSpin(table.Id, db);
 		}
 	}
 
-	public async Task ProcessSpin(string tableId, MainDbContext db, int winningNumber)
+	public async Task ProcessSpin(string tableId, MainDbContext db)
 	{
+		int winningNumber = Random.Shared.Next(0, 37);
+		
 		Table? table = await db.Tables.FindAsync(tableId);
 		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.Tier.SpinInterval_sec());
 		table!.LastWinningNumber = winningNumber;
-
+		
 		List<Bet> bets = await db.Bets
 			.Include(b => b.Player)
 			.Where(b => b.TableId == table.Id && !b.IsResolved)
@@ -39,7 +40,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 		foreach (Bet bet in bets)
 		{
 			bool win = bet.ChosenNumber == winningNumber;
-			decimal payout = win ? bet.Amount + bet.Amount * 35 : 0;
+			decimal payout = win ? bet.Amount + bet.Amount * 36 : 0;
 
 			bet.WinningNumber = winningNumber;
 			bet.Payout = payout;
@@ -49,8 +50,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			bet.Player.Balance += payout;
 		}
 
-		if (await db.TrySaveAsync() is not DbSaveResult.Success)
-			throw new Exception();
+		if (await db.TrySaveAsync() is not DbSaveResult.Success) return;
 
 		foreach (Bet bet in bets)
 		{
@@ -83,9 +83,14 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			table.Players.Remove(player);
 			player.CurrentTableId = null;
 		}
-
-		if (await db.TrySaveAsync() is not DbSaveResult.Success)
-			throw new Exception();
+		
+		if (await db.TrySaveAsync() is DbSaveResult.Success)
+		{
+			foreach (Player player in idles)
+			{
+				await hub.Clients.Group(tableId).PlayerLeft(player.Wrap());
+			}
+		}
 	}
 }
 

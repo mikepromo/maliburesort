@@ -7,11 +7,11 @@ public static class Ldb
 
 	public static async Task<IResult> GetLeaderboard(string tableId, MainDbContext db)
 	{
-		// DateTime oneHourAgo = DateTime.UtcNow.AddHours(-1);
+		DateTime oneDayAgo = DateTime.UtcNow.AddHours(-24);
 
 		List<LdbEntryDto> leaderboard = await db.Bets
 			.Include(b => b.Player)
-			// .Where(b => b.TableId == tableId && b.IsResolved && b.ResolvedAt >= oneHourAgo)
+			.Where(b => b.TableId == tableId && b.IsResolved && b.ResolvedAt >= oneDayAgo)
 			.GroupBy(b => new { b.PlayerId, b.Player.Name })
 			.Select(g => new LdbEntryDto
 			{

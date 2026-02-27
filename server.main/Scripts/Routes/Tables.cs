@@ -8,7 +8,7 @@ public static class Tables
 	public static async Task<IResult> ListTables(MainDbContext db)
 	{
 		List<TableDto> tables = await db.Tables
-			.Include(t=>t.Players)
+			.Include(t => t.Players)
 			.Select(t => new TableDto
 			{
 				Id = t.Id,
@@ -25,7 +25,7 @@ public static class Tables
 	{
 		GameBoardDto? state = await db.Tables
 			.Where(t => t.Id == tableId)
-			.Include(t=>t.Players)
+			.Include(t => t.Players)
 			.Select(t => new GameBoardDto
 			{
 				table = new TableDto
@@ -44,7 +44,6 @@ public static class Tables
 				{
 					Id = p.Id,
 					Name = p.Name,
-					Balance = p.Balance,
 					CurrentTableId = p.CurrentTableId
 				}).ToList(),
 				Bets = t.Bets.Where(b => !b.IsResolved).Select(b => new BetDto
@@ -133,7 +132,7 @@ public static class Tables
 	}
 
 	public static async Task<IResult> PlaceBet(string tableId, ClaimsPrincipal user, PlaceBetRequest request,
-		MainDbContext db, IHubContext<GameHub, IGameClient> hub)
+		MainDbContext db, IHubContext<GameHub, IGameClient> hub, IHttpClientFactory httpClientFactory)
 	{
 		if (!user.GetPlayerId(out string playerId))
 			return Results.NotFound("Player not found".Err());
@@ -162,19 +161,42 @@ public static class Tables
 		if (request.Amount <= 0)
 			return Results.BadRequest("Bet amount must be positive".Err());
 
-		if (player.Balance < request.Amount)
-			return Results.BadRequest("Insufficient funds".Err());
-
 		double timeUntilSpin = (table.NextSpinTime - DateTime.UtcNow).TotalSeconds;
 		if (timeUntilSpin < 2)
 			return Results.BadRequest("Too close to next spin, wait a moment".Err());
 
-		player.Balance -= request.Amount;
+		TxProcRes balProcRes = await Pay.GetPlayerBalance(playerId, httpClientFactory);
+		if(!balProcRes.IsSuccess(out string balError, out TxValue balVal))
+			return Results.BadRequest(balError.Err());
+
+		if (request.Amount > balVal.Value)
+			return Results.BadRequest("Insufficient funds".Err());
+		
+		string betId = Guid.NewGuid().ToString();
+
+		PendingTx pending = new()
+		{
+			Id = $"BetIK_{betId}",
+			Type = PendingTx.SPEND,
+			Status = PendingTx.PENDING,
+			PlayerId = playerId,
+			Amount = request.Amount,
+			CreatedAt = DateTime.UtcNow
+		};
+		db.PendingTxs.Add(pending);
+
+		IResult? txSaveError = await db.TrySaveAsync_HTTP();
+		if (txSaveError != null) return txSaveError;
+		
+		TxProcRes spendProcRes = await Pay.ProcessPendingTx(pending, db, httpClientFactory, hub);
+		if (spendProcRes.Error != null)
+			return Results.BadRequest(spendProcRes.Error.Err());
+
 		player.LastActiveAt = DateTime.UtcNow;
 
 		Bet bet = new()
 		{
-			Id = Guid.NewGuid().ToString(),
+			Id = betId,
 			PlayerId = player.Id,
 			TableId = tableId,
 			ChosenNumber = request.ChosenNumber,
@@ -182,16 +204,17 @@ public static class Tables
 			PlacedAt = DateTime.UtcNow,
 			IsResolved = false
 		};
-
 		db.Bets.Add(bet);
 
-		IResult? error = await db.TrySaveAsync_HTTP();
-		if (error is not null) return error;
+		IResult? betSaveError = await db.TrySaveAsync_HTTP();
+		if (betSaveError is not null)
+		{
+			//; we are going to take money from the pendingTx, but did not register the bet -> log
+			return betSaveError;
+		}
 
 		await hub.Clients.Group(tableId).BetPlaced(bet.Wrap());
 
-		await hub.Clients.User(bet.PlayerId).BalanceUpdate(bet.Player.Balance);
-
-		return Results.Ok(bet.Player.Wrap());
+		return Results.NoContent();
 	}
 }

@@ -9,10 +9,17 @@ public static class DtoExtensions
 }
 
 public record ErrorResponse(string Message, string? Code);
+
+//; of server.pay
+public record TxRequest(string IdempotencyKey, string Reason, List<TxLeg> Legs);
+public record TxLeg(string AccountId, decimal Amount);
+public record TxValue(decimal Value);
+public record TxValueDict(Dictionary<string, decimal> Ledger);
+
+//; of client
 public record VersionResponse(string Version);
 public record PlayerCredentials(string Name, string Pass);
 public record JWTResponse(string JWT, PlayerDto Player);
-public record WalletTransaction(decimal Amount);
 public record PlaceBetRequest(int ChosenNumber, decimal Amount);
 public record SendChatRequest(string Message);
 
@@ -20,8 +27,7 @@ public class PlayerDto
 {
 	public required string Id { get; set; }
 	public required string Name { get; set; }
-	public decimal Balance { get; set; }
-	public string? CurrentTableId { get; set; } 
+	public string? CurrentTableId { get; set; }
 }
 
 public class BetDto

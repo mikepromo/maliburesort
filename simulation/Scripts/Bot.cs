@@ -26,7 +26,7 @@ public class Bot
 		_http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.JWT);
 
 		if (!await Step("DEP",
-			    await _http.PostAsJsonAsync("/players/deposit", new WalletTransaction(Validation.MAX_DEPOSIT / 2))))
+			    await _http.PostAsJsonAsync("/players/deposit", new TxValue(Validation.MAX_DEPOSIT / 2))))
 			return;
 
 

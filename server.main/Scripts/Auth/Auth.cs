@@ -9,11 +9,12 @@ public static partial class Auth
 {
 	public static async Task<IResult> Me(ClaimsPrincipal user, MainDbContext db)
 	{
-		Player? player = await user.GetPlayerSecure(db);
-		if (player is null)
-		{
-			return Results.Unauthorized();
-		}
+		if (!user.GetPlayerId(out string playerId))
+			return Results.NotFound("Player not found".Err());
+
+		Player? player = db.Players.FirstOrDefault(p => p.Id == playerId);
+		if (player == null)
+			return Results.NotFound("Player not found".Err());
 
 		return Results.Ok(player.Wrap());
 	}
@@ -41,7 +42,6 @@ public static partial class Auth
 			Name = request.Name,
 			NameNormalized = nameNormalised,
 			PasswordHash = passwordHash,
-			Balance = 0
 		};
 
 		await db.Players.AddAsync(player);

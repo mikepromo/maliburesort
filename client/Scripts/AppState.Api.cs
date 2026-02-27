@@ -152,8 +152,7 @@ public partial class AppState
 
 			if (res.IsSuccessStatusCode)
 			{
-				PlayerDto? data = await res.Content.ReadFromJsonAsync<PlayerDto>();
-				Cinf($"BET ACCEPTED. NEW BALANCE: USD {data?.Balance:N2}");
+				Cinf($"BET ACCEPTED.");
 			}
 			else
 			{
@@ -172,12 +171,11 @@ public partial class AppState
 
 		try
 		{
-			HttpResponseMessage res = await http.PostAsJsonAsync("/players/deposit", new WalletTransaction(amount));
+			HttpResponseMessage res = await http.PostAsJsonAsync("/players/deposit", new TxValue(amount));
 
 			if (res.IsSuccessStatusCode)
 			{
-				WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-				Cinf($"DEPOSIT APPROVED. NEW BALANCE: USD {data?.Amount:N2}");
+				Cinf($"DEPOSIT APPROVED.");
 			}
 			else
 			{
@@ -196,12 +194,11 @@ public partial class AppState
 
 		try
 		{
-			HttpResponseMessage res = await http.PostAsJsonAsync("/players/withdraw", new WalletTransaction(amount));
+			HttpResponseMessage res = await http.PostAsJsonAsync("/players/withdraw", new TxValue(amount));
 
 			if (res.IsSuccessStatusCode)
 			{
-				WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-				Cinf($"WITHDRAWAL APPROVED. NEW BALANCE: USD {data?.Amount:N2}");
+				Cinf($"WITHDRAWAL APPROVED.");
 			}
 			else
 			{
@@ -224,12 +221,12 @@ public partial class AppState
 
 			if (res.IsSuccessStatusCode)
 			{
-				WalletTransaction? data = await res.Content.ReadFromJsonAsync<WalletTransaction>();
-				if (data != null && Player != null)
+				TxValue? data = await res.Content.ReadFromJsonAsync<TxValue>();
+				if (data != null)
 				{
-					Player.Balance = data.Amount;
+					Balance = data;
+					Cinf($"ACCOUNT BALANCE: USD {data.Value:N2}");
 					Dirty();
-					Cinf($"ACCOUNT BALANCE: USD {data.Amount:N2}");
 				}
 			}
 			else
@@ -327,7 +324,7 @@ public partial class AppState
 		{
 			HttpResponseMessage res =
 				await http.PostAsJsonAsync($"/tables/{Player.CurrentTableId}/chat", new SendChatRequest(message));
-			
+
 			if (!res.IsSuccessStatusCode)
 				await Chttp(res);
 		}

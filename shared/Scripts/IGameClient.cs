@@ -7,5 +7,5 @@ public interface IGameClient
 	Task PlayerJoined(PlayerDto player);
 	Task PlayerLeft(PlayerDto player);
 	Task BetPlaced(BetDto bet);
-	Task BalanceUpdate(decimal balance);
+	Task BalanceUpdate(TxValue val);
 }

@@ -15,12 +15,14 @@ public class Program
 
 		builder.Services.AddSingleton<TableManager>();
 		builder.Services.AddHostedService<SpinService>();
+		builder.Services.AddHostedService<PendingTxProcesser>();
 		builder.Services.AddSignalR();
+
+		ConnectPay();
 
 		if (builder.Environment.IsDevelopment())
 		{
 			builder.Services.AddEndpointsApiExplorer();
-			builder.Services.AddSwaggerGen();
 		}
 
 		if (!builder.Environment.IsDevelopment())
@@ -35,12 +37,6 @@ public class Program
 		InitExHandling();
 
 		await InitDb();
-
-		if (builder.Environment.IsDevelopment())
-		{
-			app.UseSwagger();
-			app.UseSwaggerUI();
-		}
 
 		app.UseAuthentication();
 		app.UseAuthorization();
@@ -62,7 +58,17 @@ public class Program
 			{
 				options.UseNpgsql(
 					builder.Configuration.GetConnectionString("DefaultConnection")
-					?? throw new Exception("Database Connection String is missing!"));
+					?? throw new Exception("DefaultConnection is missing!"));
+			});
+		}
+
+		void ConnectPay()
+		{
+			builder.Services.AddHttpClient("PayService", client =>
+			{
+				client.BaseAddress = new Uri(builder.Configuration["PayService:BaseUrl"]
+				                             ?? throw new Exception("PayService:BaseUrl not configured"));
+				client.Timeout = TimeSpan.FromSeconds(30);
 			});
 		}
 
@@ -140,17 +146,15 @@ public class Program
 
 		async Task InitDb()
 		{
-			using (IServiceScope scope = app.Services.CreateScope())
-			{
-				MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
+			using IServiceScope scope = app.Services.CreateScope();
+			MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 
-				// if (app.Environment.IsDevelopment())
-				// 	await db.Database.EnsureDeletedAsync();
+			if (args.Contains("--reset-db"))
+				await db.Database.EnsureDeletedAsync();
 
-				await db.Database.MigrateAsync();
+			await db.Database.MigrateAsync();
 
-				await db.SeedTables();
-			}
+			await db.SeedTables();
 		}
 	}
 }

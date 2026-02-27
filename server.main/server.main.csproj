@@ -4,6 +4,7 @@
         <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>server</RootNamespace>
     </PropertyGroup>
 
         <PropertyGroup>
@@ -27,7 +28,6 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.13" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.13" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.4" />
         <InternalsVisibleTo Include="tests" />
     </ItemGroup>
 

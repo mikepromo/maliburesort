@@ -106,6 +106,7 @@ public class GameContext(HttpClient http, string tableId) : IRazorContext
 
 partial class AppState
 {
+	public TxValue? Balance { get; private set; }
 	public PlayerDto? Player { get; private set; }
 	public LobbyContext? LobbyContext { get; private set; }
 	public GameContext? GameContext { get; private set; }

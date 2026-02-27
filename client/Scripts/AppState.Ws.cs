@@ -13,7 +13,7 @@ partial class AppState
 			if (_hub.State != HubConnectionState.Disconnected) return;
 			await _hub.DisposeAsync();
 		}
-		
+
 		string hubUrl = http.BaseAddress!.ToString().TrimEnd('/') + "/hubs/game";
 
 		_hub = new HubConnectionBuilder()
@@ -21,7 +21,7 @@ partial class AppState
 			.WithAutomaticReconnect()
 			.Build();
 
-		_hub.On<decimal>(nameof(IGameClient.BalanceUpdate), bal => { Player!.Balance = bal; });
+		_hub.On<TxValue>(nameof(IGameClient.BalanceUpdate), val => { Balance = val; });
 
 		_hub.On<PlayerDto>(nameof(IGameClient.PlayerJoined),
 			d => Cinf($"[SYS] {d.Name} connected."));
@@ -41,7 +41,7 @@ partial class AppState
 			{
 				if (GameContext?.Board != null && Player != null)
 				{
-					var myBets = GameContext.Board.Bets
+					List<BetDto> myBets = GameContext.Board.Bets
 						.Where(b => b.PlayerId == Player.Id)
 						.ToList();
 
@@ -53,7 +53,7 @@ partial class AppState
 
 						if (totalWagerOnWinner > 0)
 						{
-							decimal netProfit = totalWagerOnWinner * 36; 
+							decimal netProfit = totalWagerOnWinner * 36;
 							Cinf($"[SUCCESS] +USD {netProfit:N2} (NODE {d.WinningNumber})");
 						}
 						else

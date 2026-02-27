@@ -21,8 +21,14 @@ public class MainDbContext : DbContext
 			.IsUnique();
 
 		modelBuilder.Entity<Player>()
-			.Property(p => p.Version)
-			.IsRowVersion();
+			.Property(p => p.Version).IsRowVersion();
+
+		modelBuilder.Entity<PendingTx>(entity =>
+		{
+			entity.HasKey(e => e.Id);
+			entity.Property(e => e.Version).IsRowVersion();
+			entity.HasIndex(e => e.Status);
+		});
 
 		foreach (IMutableProperty property in modelBuilder.Model.GetEntityTypes()
 			         .SelectMany(t => t.GetProperties())
@@ -36,6 +42,7 @@ public class MainDbContext : DbContext
 	public DbSet<Table> Tables => Set<Table>();
 	public DbSet<Bet> Bets => Set<Bet>();
 	public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+	public DbSet<PendingTx> PendingTxs => Set<PendingTx>();
 
 	public async Task<IResult?> TrySaveAsync_HTTP()
 	{
@@ -92,11 +99,11 @@ public class MainDbContext : DbContext
 		}
 	}
 
-	static Table ArrangeTable( string title, TableTier tier, int shift_sec)
+	static Table ArrangeTable(string title, TableTier tier, int shift_sec)
 	{
 		return new Table
 		{
-			Id = Guid.NewGuid().ToString(),  Name = title, Tier = tier,
+			Id = Guid.NewGuid().ToString(), Name = title, Tier = tier,
 			NextSpinTime = DateTime.UtcNow.AddSeconds(shift_sec)
 		};
 	}
@@ -117,7 +124,7 @@ public class Player
 	public string? CurrentTableId { get; set; }
 	public Table? CurrentTable { get; set; }
 
-	public decimal Balance { get; set; }
+	// public decimal Balance { get; set; }
 
 	public List<Bet> Bets { get; set; } = new();
 	public List<ChatMessage> ChatMessages { get; set; } = new();
@@ -129,7 +136,6 @@ public class Player
 		{
 			Id = Id,
 			Name = Name,
-			Balance = Balance,
 			CurrentTableId = CurrentTableId
 		};
 	}

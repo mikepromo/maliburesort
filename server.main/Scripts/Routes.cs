@@ -15,8 +15,6 @@ public static class Routes
 			.AllowAnonymous()
 			.RequireRateLimiting(NORMAL);
 
-		
-		
 		RouteGroupBuilder authGroup = app.MapGroup("/auth")
 			.RequireRateLimiting(AUTH);
 
@@ -56,5 +54,6 @@ public static class Routes
 		tablesGroup.MapPost("/{tableId}/chat", Chat.SendInChat)
 			.RequireRateLimiting(NORMAL);
 		tablesGroup.MapGet("/{tableId}/leaderboard", Ldb.GetLeaderboard)
-			.RequireRateLimiting(NORMAL); }
+			.RequireRateLimiting(NORMAL);
+	}
 }

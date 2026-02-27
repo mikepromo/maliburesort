@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using shared;
 
-public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub, IGameClient> hub)
+public class TableManager(
+	IServiceScopeFactory scopeFactory,
+	IHubContext<GameHub, IGameClient> hub)
 {
 	public async Task DoSpinsAsync()
 	{
@@ -19,7 +21,6 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 
 			await RemoveIdlePlayers(table.Id, db);
-
 			await ProcessSpin(table.Id, db);
 		}
 	}
@@ -27,11 +28,12 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 	public async Task ProcessSpin(string tableId, MainDbContext db)
 	{
 		int winningNumber = Random.Shared.Next(0, 37);
-		
+		string spinId = Guid.NewGuid().ToString();
+
 		Table? table = await db.Tables.FindAsync(tableId);
 		table!.NextSpinTime = DateTime.UtcNow.AddSeconds(table.Tier.SpinInterval_sec());
-		table!.LastWinningNumber = winningNumber;
-		
+		table.LastWinningNumber = winningNumber;
+
 		List<Bet> bets = await db.Bets
 			.Include(b => b.Player)
 			.Where(b => b.TableId == table.Id && !b.IsResolved)
@@ -47,17 +49,26 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			bet.IsResolved = true;
 			bet.ResolvedAt = DateTime.UtcNow;
 
-			bet.Player.Balance += payout;
+			if (payout > 0)
+			{
+				PendingTx pending = new()
+				{
+					Id = $"{spinId}_{bet.Id}",
+					Type = PendingTx.PAYOUT,
+					Status = PendingTx.PENDING,
+					PlayerId = bet.PlayerId,
+					Amount = payout,
+					CreatedAt = DateTime.UtcNow
+				};
+				db.PendingTxs.Add(pending);
+			}
 		}
 
-		if (await db.TrySaveAsync() is not DbSaveResult.Success) return;
-
-		foreach (Bet bet in bets)
+		if (await db.TrySaveAsync() is not DbSaveResult.Success)
 		{
-			if (bet.Payout > 0)
-			{
-				await hub.Clients.User(bet.PlayerId).BalanceUpdate(bet.Player.Balance);
-			}
+			//; all pending payouts, bets resolution markers, and the table spin time itself - reverted
+			//; we rely on natural retry to attempt complete again
+			return;
 		}
 
 		SpinResultDto spinResult = new()
@@ -83,7 +94,7 @@ public class TableManager(IServiceScopeFactory scopeFactory, IHubContext<GameHub
 			table.Players.Remove(player);
 			player.CurrentTableId = null;
 		}
-		
+
 		if (await db.TrySaveAsync() is DbSaveResult.Success)
 		{
 			foreach (Player player in idles)

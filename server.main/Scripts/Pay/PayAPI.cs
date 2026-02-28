@@ -26,7 +26,7 @@ public static class Pay
 			return new TxProcRes { Error = "Internal Error" };
 
 		DbSaveResult crackSaveResult = await db.TrySaveAsync();
-		if (await db.TrySaveAsync() is not DbSaveResult.Success)
+		if (crackSaveResult is not DbSaveResult.Success)
 			return new TxProcRes { Error = $"Database failure: {crackSaveResult}" };
 
 		TxRequest txReq = pending.FormTxRequest();
@@ -37,10 +37,8 @@ public static class Pay
 
 		DbSaveResult paySaveResult = await db.TrySaveAsync();
 		if (paySaveResult is not DbSaveResult.Success)
-		{
 			return new TxProcRes { Error = $"Database failure: {paySaveResult}" };
-		}
-
+		
 		if (result.TxValue != null)
 			await hub.Clients.User(pending.PlayerId).BalanceUpdate(result.TxValue);
 
@@ -90,7 +88,6 @@ public static class Pay
 			catch (Exception ex)
 			{
 				result.Error = ex.Message;
-				continue;
 			}
 
 			if (i < maxRetries - 1)
@@ -133,7 +130,6 @@ public static class Pay
 			catch (Exception ex)
 			{
 				result.Error = ex.Message;
-				continue;
 			}
 
 			if (i < maxRetries - 1)

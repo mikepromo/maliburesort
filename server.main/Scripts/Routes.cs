@@ -48,7 +48,7 @@ public static class Routes
 		tablesGroup.MapPost("/{tableId}/leave", Tables.LeaveTable)
 			.RequireRateLimiting(NORMAL);
 		tablesGroup.MapPost("/{tableId}/bet", Tables.PlaceBet)
-			.RequireRateLimiting(BILLING);
+			.RequireRateLimiting(NORMAL);
 		tablesGroup.MapGet("/{tableId}/chat", Chat.GetChat)
 			.RequireRateLimiting(NORMAL);
 		tablesGroup.MapPost("/{tableId}/chat", Chat.SendInChat)

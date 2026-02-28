@@ -43,14 +43,6 @@ public class PendingTxProcesser(
 				if (res.Error != null)
 				{
 					//; log
-					continue;
-				}
-
-				DbSaveResult paySaveResult = await db.TrySaveAsync();
-				if (paySaveResult is not DbSaveResult.Success)
-				{
-					//; log $"Database failure: {paySaveResult}"
-					continue;
 				}
 			}
 			catch (Exception ex)

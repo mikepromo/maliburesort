@@ -176,7 +176,7 @@ public static class Tables
 
 		PendingTx pending = new()
 		{
-			Id = $"BetIK_{betId}",
+			Id = $"BetId_{betId}",
 			Type = PendingTx.SPEND,
 			Status = PendingTx.PENDING,
 			PlayerId = playerId,
@@ -186,13 +186,12 @@ public static class Tables
 		db.PendingTxs.Add(pending);
 
 		IResult? txSaveError = await db.TrySaveAsync_HTTP();
-		if (txSaveError != null) return txSaveError;
+		if (txSaveError != null) 
+			return txSaveError;
 		
 		TxProcRes spendProcRes = await Pay.ProcessPendingTx(pending, db, httpClientFactory, hub);
 		if (spendProcRes.Error != null)
 			return Results.BadRequest(spendProcRes.Error.Err());
-
-		player.LastActiveAt = DateTime.UtcNow;
 
 		Bet bet = new()
 		{
@@ -205,11 +204,15 @@ public static class Tables
 			IsResolved = false
 		};
 		db.Bets.Add(bet);
+			
+		player.LastActiveAt = DateTime.UtcNow;
 
 		IResult? betSaveError = await db.TrySaveAsync_HTTP();
 		if (betSaveError is not null)
 		{
-			//; we are going to take money from the pendingTx, but did not register the bet -> log
+			//; we charged, but failed to place -> log
+			//; potentially such cases should be automatically refunded
+			//; but for this project the user report and the log will suffice
 			return betSaveError;
 		}
 

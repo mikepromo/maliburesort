@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using shared;
 
 public class PayDbContext(DbContextOptions<PayDbContext> options) : DbContext(options)
 {
@@ -10,12 +11,10 @@ public class PayDbContext(DbContextOptions<PayDbContext> options) : DbContext(op
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		modelBuilder.Entity<Account>()
-			.Property(a => a.Version)
-			.IsRowVersion();
+			.Property(a => a.Version).IsRowVersion();
 
 		modelBuilder.Entity<JournalEntry>()
-			.HasIndex(j => j.IdempotencyKey)
-			.IsUnique();
+			.HasIndex(j => j.IdempotencyKey).IsUnique();
 
 		foreach (IMutableProperty property in modelBuilder.Model.GetEntityTypes()
 			         .SelectMany(t => t.GetProperties())
@@ -31,17 +30,11 @@ public class Account
 	public string Id { get; set; } = null!;
 	public decimal Balance { get; set; }
 	public uint Version { get; set; }
-
-	public bool IsSys()
-	{
-		return Id.StartsWith(LedgerAccounts.SYS_PREFIX);
-	}
 }
 
 public class JournalEntry
 {
 	public string Id { get; set; } = null!;
-	//; e.g. "bet_table1_spin42_player99"
 	public string IdempotencyKey { get; set; } = null!;
 	public string Reason { get; set; } = null!;
 	public DateTime CreatedAt { get; set; }

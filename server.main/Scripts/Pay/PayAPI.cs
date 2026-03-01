@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using shared;
 
@@ -16,7 +17,7 @@ public class TxProcRes
 
 public static class Pay
 {
-	const int maxRetries = 3;
+	const int maxRetries = 10;
 	const int delayMs = 100;
 
 	public static async Task<TxProcRes> ProcessPendingTx(PendingTx pending, MainDbContext db,
@@ -35,10 +36,16 @@ public static class Pay
 		if (result.Error == null) pending.Complete();
 		else pending.Fail(result.Error);
 
+		if (result.Error != null)
+		{
+			Console.WriteLine(JsonSerializer.Serialize(pending, new JsonSerializerOptions { WriteIndented = true }) +
+			                  " " + result.Error);
+		}
+
 		DbSaveResult paySaveResult = await db.TrySaveAsync();
 		if (paySaveResult is not DbSaveResult.Success)
 			return new TxProcRes { Error = $"Database failure: {paySaveResult}" };
-		
+
 		if (result.TxValue != null)
 			await hub.Clients.User(pending.PlayerId).BalanceUpdate(result.TxValue);
 
@@ -59,10 +66,11 @@ public static class Pay
 
 				if (response.IsSuccessStatusCode)
 				{
-					Dictionary<string, decimal>? balances =
-						await response.Content.ReadFromJsonAsync<Dictionary<string, decimal>>();
+					TxValueDict? newBalances =
+						await response.Content.ReadFromJsonAsync<TxValueDict>();
 
-					if (balances == null || !balances.TryGetValue(playerId.GetAccountId(), out decimal newBalance))
+					if (newBalances == null ||
+					    !newBalances.Ledger.TryGetValue(playerId.GetAccountId(), out decimal newBalance))
 					{
 						result.Error = $"Communication schema mismatch.";
 						return result;
@@ -73,15 +81,14 @@ public static class Pay
 				}
 
 				ErrorResponse? error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-				if (error?.Code == "IDEMPOTENT_REPLAY")
+				
+				if (error?.Code == LedgerConf.CONCURRENCY_CONFLICT)
 				{
-					//; log idempotent retry
-					return await GetPlayerBalance(playerId, httpClientFactory);
+					result.Error = $"{error.Message}";
 				}
-
-				if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+				else if (error != null)
 				{
-					result.Error = $"{response.StatusCode.ToString()}";
+					result.Error = $"{error.Message}";
 					return result;
 				}
 			}
@@ -121,9 +128,11 @@ public static class Pay
 					return result;
 				}
 
-				if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+				ErrorResponse? error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+
+				if (error != null)
 				{
-					result.Error = $"{response.StatusCode.ToString()}";
+					result.Error = $"{error.Message}";
 					return result;
 				}
 			}

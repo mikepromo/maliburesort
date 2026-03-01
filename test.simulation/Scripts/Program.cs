@@ -1,5 +1,5 @@
 ﻿string baseAddress = "http://localhost:5078";
-int botCount = 100;
+int botCount = 666;
 
 Console.WriteLine($"Spawning {botCount} bots...");
 

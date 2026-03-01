@@ -6,24 +6,38 @@ public static class Routes
 	{
 		app.MapPost("/internal/transfer", async (TxRequest req, Ledger ledger) =>
 		{
-			string? errorCode = await ledger.ExecuteTransfer(req);
+			try
+			{
+				string? errorCode = await ledger.ExecuteTransfer(req);
 
-			if (errorCode != null)
-				return Results.BadRequest(errorCode.Err());
+				if (errorCode != null && errorCode != LedgerConf.IDEMPOTENT_REPLAY)
+					return Results.BadRequest(errorCode.Err());
 
-			Dictionary<string, decimal> newBalances = req.Legs
-				.Select(l => l.AccountId)
-				.Distinct()
-				.ToDictionary(id => id, id => ledger.GetBalance(id).Result);
+				Dictionary<string, decimal> newBalances = req.Legs
+					.Select(l => l.AccountId)
+					.Distinct()
+					.ToDictionary(id => id, id => ledger.GetBalance(id).Result);
 
-			return Results.Ok(new TxValueDict(newBalances));
+				return Results.Ok(new TxValueDict(newBalances));
+			}
+			catch (Exception ex)
+			{
+				return Results.BadRequest($"[FATAL] ExecuteTransfer threw: {ex}".Err());
+			}
 		});
 
 		app.MapGet("/internal/balance/{accountId}", async (string accountId, Ledger ledger) =>
 		{
-			decimal balance = await ledger.GetBalance(accountId);
-			//; we ALWAYS return legit value here
-			return Results.Ok(new TxValue(balance));
+			try
+			{
+				decimal balance = await ledger.GetBalance(accountId);
+				//; we ALWAYS return legit value here
+				return Results.Ok(new TxValue(balance));
+			}
+			catch (Exception ex)
+			{
+				return Results.BadRequest($"[FATAL] GetBalance threw: {ex}".Err());
+			}
 		});
 	}
 }

@@ -20,7 +20,7 @@ public static class Ldb
 				NetProfit = g.Sum(b => b.Payout - b.Amount)
 			})
 			.OrderByDescending(x => x.NetProfit)
-			.Where(x=>x.NetProfit>0)
+			// .Where(x=>x.NetProfit>0)
 			.Take(DEFAULT_PAGINATION)
 			.ToListAsync();
 

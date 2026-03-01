@@ -1,4 +1,10 @@
-using shared;
+public enum TableTier
+{
+	Tier1,
+	Tier2,
+	Tier3,
+	Tier4
+}
 
 public static class TableSchema
 {
@@ -30,10 +36,10 @@ public static class TableSchema
 	{
 		return tier switch
 		{
-			TableTier.Tier1 => 40,
-			TableTier.Tier2 => 20,
-			TableTier.Tier3 => 10,
-			TableTier.Tier4 => 4,
+			TableTier.Tier1 => 400,
+			TableTier.Tier2 => 200,
+			TableTier.Tier3 => 100,
+			TableTier.Tier4 => 40,
 			_               => throw new ArgumentOutOfRangeException()
 		};
 	}

@@ -13,7 +13,9 @@ public static class Tables
 			{
 				Id = t.Id,
 				Name = t.Name,
-				Tier = t.Tier,
+				MinBet = t.Tier.MinBet(),
+				MaxBet = t.Tier.MaxBet(),
+				MaxSeats= t.Tier.MaxSeats(),
 				PlayerCount = t.Players.Count
 			})
 			.ToListAsync();
@@ -32,7 +34,9 @@ public static class Tables
 				{
 					Id = t.Id,
 					Name = t.Name,
-					Tier = t.Tier,
+					MinBet = t.Tier.MinBet(),
+					MaxBet = t.Tier.MaxBet(),
+					MaxSeats= t.Tier.MaxSeats(),
 					PlayerCount = t.Players.Count
 				},
 				spinResult = new SpinResultDto
@@ -161,9 +165,9 @@ public static class Tables
 		if (request.Amount <= 0)
 			return Results.BadRequest("Bet amount must be positive".Err());
 
-		double timeUntilSpin = (table.NextSpinTime - DateTime.UtcNow).TotalSeconds;
-		if (timeUntilSpin < 2)
-			return Results.BadRequest("Too close to next spin, wait a moment".Err());
+		// double timeUntilSpin = (table.NextSpinTime - DateTime.UtcNow).TotalSeconds;
+		// if (timeUntilSpin < 2)
+		// 	return Results.BadRequest("Too close to next spin, wait a moment".Err());
 
 		TxProcRes balProcRes = await Pay.GetPlayerBalance(playerId, httpClientFactory);
 		if(!balProcRes.IsSuccess(out string balError, out TxValue balVal))

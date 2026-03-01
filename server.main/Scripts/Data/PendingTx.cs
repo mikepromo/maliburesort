@@ -31,7 +31,7 @@ public class PendingTx
 				Id,
 				Type,
 				[
-					new TxLeg(LedgerAccounts.EXTERNAL, -Amount),
+					new TxLeg(LedgerConf.EXTERNAL, -Amount),
 					new TxLeg(PlayerId.GetAccountId(), Amount)
 				]),
 
@@ -39,7 +39,7 @@ public class PendingTx
 				Id,
 				Type,
 				[
-					new TxLeg(LedgerAccounts.EXTERNAL, Amount),
+					new TxLeg(LedgerConf.EXTERNAL, Amount),
 					new TxLeg(PlayerId.GetAccountId(), -Amount)
 				]),
 
@@ -47,7 +47,7 @@ public class PendingTx
 				Id,
 				Type,
 				[
-					new TxLeg(LedgerAccounts.HOUSE, Amount),
+					new TxLeg(LedgerConf.HOUSE, Amount),
 					new TxLeg(PlayerId.GetAccountId(), -Amount)
 				]),
 
@@ -55,7 +55,7 @@ public class PendingTx
 				Id,
 				Type,
 				[
-					new TxLeg(LedgerAccounts.HOUSE, -Amount),
+					new TxLeg(LedgerConf.HOUSE, -Amount),
 					new TxLeg(PlayerId.GetAccountId(), Amount)
 				]),
 
@@ -87,7 +87,7 @@ public class PendingTx
 
 	void AppendLog(string line)
 	{
-		if (!string.IsNullOrEmpty(Log)) Log += '\n';
+		if (!string.IsNullOrEmpty(Log)) Log += " -> ";
 		else Log = string.Empty;
 		Log += $"{DateTime.UtcNow}: {line}";
 	}

@@ -1,4 +1,4 @@
-using shared;
+namespace shared;
 
 public interface IGameClient
 {
@@ -8,4 +8,10 @@ public interface IGameClient
 	Task PlayerLeft(PlayerDto player);
 	Task BetPlaced(BetDto bet);
 	Task BalanceUpdate(TxValue val);
+}
+
+public static class ServerRPC
+{
+	public const string SubscribeToTable = nameof(SubscribeToTable);
+	public const string UnsubscribeFromTable = nameof(UnsubscribeFromTable);
 }

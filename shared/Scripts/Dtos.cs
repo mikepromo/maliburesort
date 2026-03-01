@@ -1,6 +1,6 @@
 ﻿namespace shared;
 
-public static class DtoExtensions
+public static class HttpExtensions
 {
 	public static ErrorResponse Err(this string str, string? code = null)
 	{
@@ -10,7 +10,7 @@ public static class DtoExtensions
 
 public record ErrorResponse(string Message, string? Code);
 
-//; of server.pay
+//; of pay
 public record TxRequest(string IdempotencyKey, string Reason, List<TxLeg> Legs);
 public record TxLeg(string AccountId, decimal Amount);
 public record TxValue(decimal Value);
@@ -61,12 +61,10 @@ public class TableDto
 {
 	public required string Id { get; set; }
 	public required string Name { get; set; }
-	public TableTier Tier { get; set; }
 	public int PlayerCount { get; set; }
-
-	public decimal MinBet => Tier.MinBet();
-	public decimal MaxBet => Tier.MaxBet();
-	public int MaxSeats => Tier.MaxSeats();
+	public decimal MinBet { get; set; }
+	public decimal MaxBet { get; set; }
+	public int MaxSeats { get; set; }
 }
 
 public class GameBoardDto

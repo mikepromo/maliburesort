@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using shared;
 
-public class PendingTxProcesser(
+public class TxProcesser(
 	IServiceScopeFactory scopeFactory,
 	IHttpClientFactory httpClientFactory,
 	IHubContext<GameHub, IGameClient> hub)
@@ -29,12 +30,12 @@ public class PendingTxProcesser(
 		using IServiceScope scope = scopeFactory.CreateScope();
 		MainDbContext db = scope.ServiceProvider.GetRequiredService<MainDbContext>();
 
-		DateTime cutoff = DateTime.UtcNow.AddSeconds(-1); //; does it give any safety buffer?
-		List<PendingTx> stuck = await db.PendingTxs
+		DateTime cutoff = DateTime.UtcNow.AddSeconds(-1);
+		List<PendingTx> pending = await db.PendingTxs
 			.Where(pt => pt.Status == PendingTx.PENDING && pt.CreatedAt < cutoff)
 			.ToListAsync(stoppingToken);
 
-		foreach (PendingTx tx in stuck)
+		foreach (PendingTx tx in pending)
 		{
 			try
 			{
@@ -45,7 +46,7 @@ public class PendingTxProcesser(
 					//; log
 				}
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 				//; log
 			}

@@ -83,20 +83,6 @@
             return;
         }
 
-        string? nameError = Validation.IsValidName(name);
-        if (nameError != null)
-        {
-            AppState.Cerr(nameError);
-            return;
-        }
-
-        string? passError = Validation.IsValidPass(pass);
-        if (passError != null)
-        {
-            AppState.Cerr(passError);
-            return;
-        }
-
         if (isRegisterMode)
         {
             if (pass != passConfirm)

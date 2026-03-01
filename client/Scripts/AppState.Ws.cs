@@ -21,7 +21,12 @@ partial class AppState
 			.WithAutomaticReconnect()
 			.Build();
 
-		_hub.On<TxValue>(nameof(IGameClient.BalanceUpdate), val => { Balance = val; });
+		_hub.On<TxValue>(nameof(IGameClient.BalanceUpdate), val =>
+		{
+			Balance = val;
+			Cinf($"[SYS] new balance: {val.Value}.");
+			Dirty();
+		});
 
 		_hub.On<PlayerDto>(nameof(IGameClient.PlayerJoined),
 			d => Cinf($"[SYS] {d.Name} connected."));

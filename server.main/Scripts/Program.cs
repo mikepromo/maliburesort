@@ -15,7 +15,7 @@ public class Program
 
 		builder.Services.AddSingleton<TableManager>();
 		builder.Services.AddHostedService<SpinService>();
-		builder.Services.AddHostedService<PendingTxProcesser>();
+		builder.Services.AddHostedService<TxProcesser>();
 		builder.Services.AddSignalR();
 
 		ConnectPay();

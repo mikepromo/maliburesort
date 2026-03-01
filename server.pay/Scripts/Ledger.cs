@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
@@ -8,10 +9,10 @@ public class Ledger(PayDbContext db)
 	public async Task<string?> ExecuteTransfer(TxRequest request)
 	{
 		if (request.Legs.Sum(l => l.Amount) != 0)
-			return "NON_ZERO_SUM";
+			return LedgerConf.NON_ZERO_SUM;
 
 		if (request.Legs.Count < 2)
-			return "INVALID_LEGS";
+			return LedgerConf.INVALID_LEGS;
 
 		using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync();
 
@@ -28,18 +29,20 @@ public class Ledger(PayDbContext db)
 
 			foreach (TxLeg leg in request.Legs)
 			{
-				Account account = await GetOrCreateAccount(leg.AccountId);
+				if(!leg.AccountId.IsSys())
+				{
+					Account account = await GetOrCreateAccount(leg.AccountId);
+					account.Balance += leg.Amount;
 
-				account.Balance += leg.Amount;
-
-				if (account.Balance < 0 && !account.IsSys())
-					return $"INSUFFICIENT_FUNDS_{account.Id}";
+					if (account.Balance < 0)
+						return LedgerConf.INSUFFICIENT_FUNDS;
+				}
 
 				db.LedgerLines.Add(new LedgerLine
 				{
 					Id = Guid.NewGuid().ToString(),
 					JournalEntryId = journal.Id,
-					AccountId = account.Id,
+					AccountId = leg.AccountId,
 					Amount = leg.Amount
 				});
 			}
@@ -52,12 +55,12 @@ public class Ledger(PayDbContext db)
 		catch (DbUpdateConcurrencyException)
 		{
 			await transaction.RollbackAsync();
-			return "CONCURRENCY_CONFLICT";
+			return LedgerConf.CONCURRENCY_CONFLICT;
 		}
 		catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
 		{
 			await transaction.RollbackAsync();
-			return "IDEMPOTENT_REPLAY";
+			return LedgerConf.IDEMPOTENT_REPLAY;
 		}
 		catch (Exception ex)
 		{
